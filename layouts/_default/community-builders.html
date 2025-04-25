@@ -3,6 +3,22 @@
 
 <div class="content">
     <div id="map"></div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-number" id="totalBuilders">0</div>
+            <div class="stat-label">Community Builders</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="totalCategories">0</div>
+            <div class="stat-label">Categories</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="totalCountries">0</div>
+            <div class="stat-label">Countries</div>
+        </div>
+    </div>
+
     <h1>{{ .Title }}</h1>
     <p>{{ .Description }}</p>
     
@@ -18,21 +34,7 @@
             <button class="filter-btn" data-filter="security">Security</button>
         </div>
     </div>
-    
-    <div class="stats">
-        <div class="stat-card">
-            <div class="stat-number" id="totalBuilders">0</div>
-            <div class="stat-label">Community Builders</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="totalCategories">0</div>
-            <div class="stat-label">Categories</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-number" id="totalCountries">0</div>
-            <div class="stat-label">Countries</div>
-        </div>
-    </div>
+
     
     <h2>All Community Builders</h2>
     <div id="buildersList" class="grid">
