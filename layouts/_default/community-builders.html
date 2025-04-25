@@ -2,8 +2,26 @@
 {{ $buildersCSV := "data/community_builders_complete.csv" | absURL }}
 
 <div class="content">
+
     <div id="map"></div>
 
+    <h1>{{ .Title }}</h1>
+    <p>{{ .Description }}</p>
+    
+    {{ .Content }}
+    
+    <div class="search-container">
+        <input type="text" id="builderSearch" class="search-input" placeholder="Search community builders by name, location, or category...">
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">All Categories</button>
+            <button class="filter-btn" data-filter="serverless">Serverless</button>
+            <button class="filter-btn" data-filter="containers">Containers</button>
+            <button class="filter-btn" data-filter="machine learning" id="ml-filter-btn">Machine Learning</button>
+            <button class="filter-btn" data-filter="security">Security</button>
+            <button class="filter-btn" data-filter="devops">DevOps</button>
+        </div>
+    </div>
+    
     <div class="stats">
         <div class="stat-card">
             <div class="stat-number" id="totalBuilders">0</div>
@@ -19,23 +37,7 @@
         </div>
     </div>
 
-    <h1>{{ .Title }}</h1>
-    <p>{{ .Description }}</p>
-    
-    {{ .Content }}
-    
-    <div class="search-container">
-        <input type="text" id="builderSearch" class="search-input" placeholder="Search community builders by name, location, or category...">
-        <div class="filters">
-            <button class="filter-btn active" data-filter="all">All Categories</button>
-            <button class="filter-btn" data-filter="serverless">Serverless</button>
-            <button class="filter-btn" data-filter="containers">Containers</button>
-            <button class="filter-btn" data-filter="ml">Machine Learning</button>
-            <button class="filter-btn" data-filter="security">Security</button>
-        </div>
-    </div>
-
-    
+        
     <h2>All Community Builders</h2>
     <div id="buildersList" class="grid">
         <!-- Community builders will be populated here -->
@@ -50,7 +52,6 @@
         <h2>Community Builders by Category</h2>
         <svg id="categoryChart" width="100%" height="100%"></svg>
     </div>
-
 </div>
 
 <script>
@@ -139,27 +140,126 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error('No community builders data available');
             }
             
-            // Update stats
-            document.getElementById('totalBuilders').textContent = builders.length;
+            // Function to update stats based on filtered builders
+            function updateStats(filteredData) {
+                // Update total builders count
+                document.getElementById('totalBuilders').textContent = filteredData.length;
+                
+                // Count unique categories in filtered data
+                const categories = new Set();
+                filteredData.forEach(builder => {
+                    if (builder.Category) {
+                        categories.add(builder.Category.split(' Builder')[0]);
+                    }
+                });
+                document.getElementById('totalCategories').textContent = categories.size;
+                
+                // Count unique countries in filtered data
+                const countries = new Set();
+                filteredData.forEach(builder => {
+                    if (builder.Location) {
+                        const country = builder.Location.split(',').pop().trim();
+                        if (country) countries.add(country);
+                    }
+                });
+                document.getElementById('totalCountries').textContent = countries.size;
+                
+                // Update chart if it exists
+                updateCategoryChart(filteredData);
+            }
             
-            // Count unique categories
-            const categories = new Set();
-            builders.forEach(builder => {
-                if (builder.Category) {
-                    categories.add(builder.Category.split(' Builder')[0]);
-                }
-            });
-            document.getElementById('totalCategories').textContent = categories.size;
+            // Initial stats update with all builders
+            updateStats(builders);
             
-            // Count unique countries
-            const countries = new Set();
-            builders.forEach(builder => {
-                if (builder.Location) {
-                    const country = builder.Location.split(',').pop().trim();
-                    if (country) countries.add(country);
+            // Function to update the category chart
+            function updateCategoryChart(filteredData) {
+                // Clear existing chart
+                d3.select('#categoryChart').selectAll('*').remove();
+                
+                // Create category data from filtered builders
+                const categoryData = {};
+                filteredData.forEach(builder => {
+                    if (builder.Category) {
+                        const category = builder.Category.split(' Builder')[0];
+                        if (!categoryData[category]) {
+                            categoryData[category] = 0;
+                        }
+                        categoryData[category]++;
+                    }
+                });
+                
+                // Sort categories by count
+                const sortedCategories = Object.entries(categoryData)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 10); // Top 10 categories
+                
+                // Create bar chart if D3 is available and we have data
+                if (typeof d3 !== 'undefined' && sortedCategories.length > 0) {
+                    try {
+                        const svg = d3.select('#categoryChart');
+                        const width = parseInt(svg.style('width')) || 600;
+                        const height = parseInt(svg.style('height')) || 400;
+                        const margin = {top: 20, right: 30, bottom: 100, left: 60};
+                        const chartWidth = width - margin.left - margin.right;
+                        const chartHeight = height - margin.top - margin.bottom;
+                        
+                        const chart = svg.append('g')
+                            .attr('transform', `translate(${margin.left},${margin.top})`);
+                            
+                        const x = d3.scaleBand()
+                            .domain(sortedCategories.map(d => d[0]))
+                            .range([0, chartWidth])
+                            .padding(0.1);
+                            
+                        const y = d3.scaleLinear()
+                            .domain([0, d3.max(sortedCategories, d => d[1])])
+                            .nice()
+                            .range([chartHeight, 0]);
+                            
+                        // Add bars
+                        chart.selectAll('.bar')
+                            .data(sortedCategories)
+                            .enter()
+                            .append('rect')
+                            .attr('class', 'bar')
+                            .attr('x', d => x(d[0]))
+                            .attr('y', d => y(d[1]))
+                            .attr('width', x.bandwidth())
+                            .attr('height', d => chartHeight - y(d[1]))
+                            .attr('fill', '#FF9900'); // AWS Orange
+                            
+                        // Add x-axis
+                        chart.append('g')
+                            .attr('transform', `translate(0,${chartHeight})`)
+                            .call(d3.axisBottom(x))
+                            .selectAll('text')
+                            .attr('transform', 'rotate(-45)')
+                            .style('text-anchor', 'end')
+                            .attr('dx', '-.8em')
+                            .attr('dy', '.15em');
+                            
+                        // Add y-axis
+                        chart.append('g')
+                            .call(d3.axisLeft(y));
+                            
+                        // Add labels
+                        chart.selectAll('.label')
+                            .data(sortedCategories)
+                            .enter()
+                            .append('text')
+                            .attr('class', 'label')
+                            .attr('x', d => x(d[0]) + x.bandwidth() / 2)
+                            .attr('y', d => y(d[1]) - 5)
+                            .attr('text-anchor', 'middle')
+                            .text(d => d[1]);
+                    } catch (e) {
+                        console.error('Error creating chart:', e);
+                        document.querySelector('.chart-container').innerHTML = '<p>Chart loading error. Please refresh the page.</p>';
+                    }
+                } else if (sortedCategories.length === 0) {
+                    document.querySelector('.chart-container').innerHTML = '<p>No category data available for the current selection.</p>';
                 }
-            });
-            document.getElementById('totalCountries').textContent = countries.size;
+            }
             
             // Group builders by country for clustering
             const countryBuilders = {};
@@ -201,88 +301,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 marker.bindPopup(popupContent);
             });
-            
-            // Create category chart
-            const categoryData = {};
-            builders.forEach(builder => {
-                if (builder.Category) {
-                    const category = builder.Category.split(' Builder')[0];
-                    if (!categoryData[category]) {
-                        categoryData[category] = 0;
-                    }
-                    categoryData[category]++;
-                }
-            });
-            
-            // Sort categories by count
-            const sortedCategories = Object.entries(categoryData)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 10); // Top 10 categories
-            
-            // Create bar chart if D3 is available
-            if (typeof d3 !== 'undefined') {
-                try {
-                    const svg = d3.select('#categoryChart');
-                    const width = parseInt(svg.style('width')) || 600;
-                    const height = parseInt(svg.style('height')) || 400;
-                    const margin = {top: 20, right: 30, bottom: 100, left: 60};
-                    const chartWidth = width - margin.left - margin.right;
-                    const chartHeight = height - margin.top - margin.bottom;
-                    
-                    const chart = svg.append('g')
-                        .attr('transform', `translate(${margin.left},${margin.top})`);
-                        
-                    const x = d3.scaleBand()
-                        .domain(sortedCategories.map(d => d[0]))
-                        .range([0, chartWidth])
-                        .padding(0.1);
-                        
-                    const y = d3.scaleLinear()
-                        .domain([0, d3.max(sortedCategories, d => d[1])])
-                        .nice()
-                        .range([chartHeight, 0]);
-                        
-                    // Add bars
-                    chart.selectAll('.bar')
-                        .data(sortedCategories)
-                        .enter()
-                        .append('rect')
-                        .attr('class', 'bar')
-                        .attr('x', d => x(d[0]))
-                        .attr('y', d => y(d[1]))
-                        .attr('width', x.bandwidth())
-                        .attr('height', d => chartHeight - y(d[1]))
-                        .attr('fill', '#FF9900'); // AWS Orange
-                        
-                    // Add x-axis
-                    chart.append('g')
-                        .attr('transform', `translate(0,${chartHeight})`)
-                        .call(d3.axisBottom(x))
-                        .selectAll('text')
-                        .attr('transform', 'rotate(-45)')
-                        .style('text-anchor', 'end')
-                        .attr('dx', '-.8em')
-                        .attr('dy', '.15em');
-                        
-                    // Add y-axis
-                    chart.append('g')
-                        .call(d3.axisLeft(y));
-                        
-                    // Add labels
-                    chart.selectAll('.label')
-                        .data(sortedCategories)
-                        .enter()
-                        .append('text')
-                        .attr('class', 'label')
-                        .attr('x', d => x(d[0]) + x.bandwidth() / 2)
-                        .attr('y', d => y(d[1]) - 5)
-                        .attr('text-anchor', 'middle')
-                        .text(d => d[1]);
-                } catch (e) {
-                    console.error('Error creating chart:', e);
-                    document.querySelector('.chart-container').innerHTML = '<p>Chart loading error. Please refresh the page.</p>';
-                }
-            }
             
             // Display community builders
             const itemsPerPage = 12;
@@ -424,31 +442,186 @@ document.addEventListener('DOMContentLoaded', function() {
                     (builder.Category && builder.Category.toLowerCase().includes(searchTerm))
                 );
                 currentPage = 1;
+                updateStats(filteredBuilders);
                 renderBuilders();
             });
             
-            // Filter buttons
+            // Filter buttons with enhanced debugging
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
+                    console.log("==== FILTER BUTTON CLICKED ====");
+                    console.log("Button text:", this.textContent);
+                    console.log("Button data-filter:", this.dataset.filter);
+                    
                     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
                     this.classList.add('active');
                     
-                    const filter = this.dataset.filter;
+                    const filter = this.dataset.filter.toLowerCase();
+                    console.log("Filter (lowercase):", filter);
+                    
+                    // Debug: Log all categories to see what we're working with
+                    const allCategories = builders.map(b => b.Category).filter(Boolean);
+                    console.log("Total categories found:", allCategories.length);
+                    console.log("Sample categories (first 10):", allCategories.slice(0, 10));
+                    
+                    // For Machine Learning, log specific debug info
+                    if (filter === 'machine learning') {
+                        console.log("DEBUGGING MACHINE LEARNING FILTER");
+                        
+                        // Check if any categories contain ML-related terms
+                        const mlTerms = ['machine', 'learning', 'ml', 'ai', 'artificial', 'intelligence', 'data science'];
+                        
+                        mlTerms.forEach(term => {
+                            const matches = allCategories.filter(c => 
+                                c.toLowerCase().includes(term.toLowerCase())
+                            );
+                            console.log(`Categories containing '${term}':`, matches.length);
+                            if (matches.length > 0) {
+                                console.log(`Sample matches for '${term}':`, matches.slice(0, 5));
+                            }
+                        });
+                    }
                     
                     if (filter === 'all') {
                         filteredBuilders = [...builders];
+                        console.log("Selected ALL builders:", filteredBuilders.length);
+                    } else if (filter === 'machine learning') {
+                        console.log("APPLYING MACHINE LEARNING FILTER");
+                        
+                        // Use includes() for more flexible matching on the Category field
+                        filteredBuilders = builders.filter(builder => {
+                            if (!builder.Category) return false;
+                            const category = builder.Category.toLowerCase();
+                            return category.includes('machine learning') || 
+                                   category.includes('ml') || 
+                                   category.includes('ai') || 
+                                   category.includes('artificial intelligence') ||
+                                   category.includes('data science');
+                        });
+                        
+                        console.log(`MACHINE LEARNING FILTER found ${filteredBuilders.length} builders`);
+                        
+                        // If still no results, try a broader search
+                        if (filteredBuilders.length === 0) {
+                            console.log("No exact ML matches, trying broader search");
+                            filteredBuilders = builders.filter(builder => {
+                                return Object.entries(builder).some(([key, value]) => {
+                                    if (typeof value === 'string') {
+                                        const lowerValue = value.toLowerCase();
+                                        return lowerValue.includes('machine') || 
+                                               lowerValue.includes('learn') || 
+                                               lowerValue.includes('ml') || 
+                                               lowerValue.includes('ai');
+                                    }
+                                    return false;
+                                });
+                            });
+                        }
                     } else {
-                        filteredBuilders = builders.filter(builder => 
-                            builder.Category && builder.Category.toLowerCase().includes(filter.toLowerCase())
-                        );
+                        filteredBuilders = builders.filter(builder => {
+                            if (!builder.Category) return false;
+                            
+                            const category = builder.Category.toLowerCase();
+                            const selectedFilter = filter.toLowerCase();
+                            
+                            // Special case for containers
+                            if (filter === 'containers') {
+                                return category.includes('container') || 
+                                       category.includes('kubernetes') || 
+                                       category.includes('docker') ||
+                                       category.includes('k8s');
+                            }
+                            
+                            // Special case for serverless
+                            if (filter === 'serverless') {
+                                return category.includes('serverless') || 
+                                       category.includes('lambda') ||
+                                       category.includes('faas');
+                            }
+                            
+                            // Special case for security
+                            if (filter === 'security') {
+                                return category.includes('security') || 
+                                       category.includes('sec ') || 
+                                       category.includes('governance') ||
+                                       category.includes('compliance');
+                            }
+                            
+                            // Special case for devops
+                            if (filter === 'devops') {
+                                return category.includes('devops') || 
+                                       category.includes('dev ops') || 
+                                       category.includes('cicd') || 
+                                       category.includes('ci/cd') ||
+                                       category.includes('pipeline');
+                            }
+                            
+                            // Default case - more flexible matching using includes() instead of exact match
+                            return category.includes(selectedFilter);
+                        });
+                    }
+                    
+                    console.log(`Found ${filteredBuilders.length} builders for filter: ${filter}`);
+                    
+                    // If no results for any filter, show a message and use all builders
+                    if (filteredBuilders.length === 0) {
+                        console.error(`No builders found for filter: ${filter}. Showing all builders.`);
+                        filteredBuilders = [...builders];
                     }
                     
                     currentPage = 1;
+                    updateStats(filteredBuilders);
                     renderBuilders();
                 });
             });
             
-            // Initial render
+            // Add direct event listener for ML button with enhanced filtering
+            document.getElementById('ml-filter-btn').addEventListener('click', function(e) {
+                console.log("DIRECT ML BUTTON CLICK HANDLER ACTIVATED");
+                
+                // Clear other active filters
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                // First try to match by Category field
+                filteredBuilders = builders.filter(builder => {
+                    if (!builder.Category) return false;
+                    const category = builder.Category.toLowerCase();
+                    return category.includes('machine learning') || 
+                           category.includes('ml') || 
+                           category.includes('ai') || 
+                           category.includes('artificial intelligence') ||
+                           category.includes('data science');
+                });
+                
+                console.log(`ML filter found ${filteredBuilders.length} builders by category`);
+                
+                // If no results, try broader search across all fields
+                if (filteredBuilders.length === 0) {
+                    console.log("No category matches for ML, trying broader search");
+                    filteredBuilders = builders.filter(builder => {
+                        return Object.entries(builder).some(([key, value]) => {
+                            if (typeof value === 'string') {
+                                const lowerValue = value.toLowerCase();
+                                return lowerValue.includes('machine') || 
+                                       lowerValue.includes('learn') || 
+                                       lowerValue.includes('ml') || 
+                                       lowerValue.includes('ai');
+                            }
+                            return false;
+                        });
+                    });
+                    console.log(`Broader ML search found ${filteredBuilders.length} builders`);
+                }
+                
+                currentPage = 1;
+                updateStats(filteredBuilders);
+                renderBuilders();
+            });
+            
+            // Initial render with debugging
+            console.log("Initial render with all builders:", builders.length);
+            console.log("Sample categories:", builders.slice(0, 10).map(b => b.Category));
             renderBuilders();
         })
         .catch(error => {
