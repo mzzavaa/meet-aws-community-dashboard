@@ -1,0 +1,502 @@
+{{ define "main" }}
+{{ $buildersCSV := "data/community_builders_complete.csv" | absURL }}
+
+<div class="content">
+    <h1>{{ .Title }}</h1>
+    <p>{{ .Description }}</p>
+    
+    {{ .Content }}
+    
+    <div class="search-container">
+        <input type="text" id="builderSearch" class="search-input" placeholder="Search community builders by name, location, or category...">
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">All Categories</button>
+            <button class="filter-btn" data-filter="serverless">Serverless</button>
+            <button class="filter-btn" data-filter="containers">Containers</button>
+            <button class="filter-btn" data-filter="ml">Machine Learning</button>
+            <button class="filter-btn" data-filter="security">Security</button>
+        </div>
+    </div>
+    
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-number" id="totalBuilders">0</div>
+            <div class="stat-label">Community Builders</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="totalCategories">0</div>
+            <div class="stat-label">Categories</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="totalCountries">0</div>
+            <div class="stat-label">Countries</div>
+        </div>
+    </div>
+    
+    <div class="chart-container">
+        <h2>Community Builders by Category</h2>
+        <svg id="categoryChart" width="100%" height="100%"></svg>
+    </div>
+    
+    <div id="map"></div>
+    
+    <h2>All Community Builders</h2>
+    <div id="buildersList" class="grid">
+        <!-- Community builders will be populated here -->
+        <div class="loading">Loading community builders data...</div>
+    </div>
+    
+    <div class="pagination" id="pagination">
+        <!-- Pagination will be populated here -->
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Community Builders page loaded, initializing...');
+    
+    // Initialize the map
+    const map = L.map('map').setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+    
+    // Function to parse CSV
+    function parseCSV(text) {
+        try {
+            const lines = text.split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            
+            return lines.slice(1)
+                .filter(line => line.trim())
+                .map(line => {
+                    // Handle commas within quoted fields
+                    const values = [];
+                    let inQuotes = false;
+                    let currentValue = '';
+                    
+                    for (let i = 0; i < line.length; i++) {
+                        const char = line[i];
+                        
+                        if (char === '"') {
+                            inQuotes = !inQuotes;
+                        } else if (char === ',' && !inQuotes) {
+                            values.push(currentValue);
+                            currentValue = '';
+                        } else {
+                            currentValue += char;
+                        }
+                    }
+                    
+                    values.push(currentValue);
+                    
+                    // Create object from headers and values
+                    const entry = {};
+                    headers.forEach((header, i) => {
+                        entry[header] = values[i] ? values[i].replace(/^"(.*)"$/, '$1') : '';
+                    });
+                    
+                    return entry;
+                });
+        } catch (e) {
+            console.error('CSV parsing error:', e);
+            return [];
+        }
+    }
+    
+    // Function to get coordinates for a location
+    function getCoordinates(locationStr) {
+        if (!locationStr) return [0, 0];
+        
+        // Simple hash-based coordinate generation for demo
+        const hash = locationStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const lat = (hash % 140) - 70; // Range from -70 to 70
+        const lng = (hash * 31 % 320) - 160; // Range from -160 to 160
+        
+        return [lat, lng];
+    }
+    
+    // Use absolute URL for data file in Hugo
+    const buildersUrl = "{{ $buildersCSV }}";
+    console.log("Loading community builders from:", buildersUrl);
+    
+    // Load community builders data
+    fetch(buildersUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(text => {
+            // Parse CSV
+            const builders = parseCSV(text);
+            console.log(`Loaded ${builders.length} community builders`);
+            
+            if (builders.length === 0) {
+                throw new Error('No community builders data available');
+            }
+            
+            // Update stats
+            document.getElementById('totalBuilders').textContent = builders.length;
+            
+            // Count unique categories
+            const categories = new Set();
+            builders.forEach(builder => {
+                if (builder.Category) {
+                    categories.add(builder.Category.split(' Builder')[0]);
+                }
+            });
+            document.getElementById('totalCategories').textContent = categories.size;
+            
+            // Count unique countries
+            const countries = new Set();
+            builders.forEach(builder => {
+                if (builder.Location) {
+                    const country = builder.Location.split(',').pop().trim();
+                    if (country) countries.add(country);
+                }
+            });
+            document.getElementById('totalCountries').textContent = countries.size;
+            
+            // Group builders by country for clustering
+            const countryBuilders = {};
+            builders.forEach(builder => {
+                if (!builder.Location) return;
+                
+                const location = builder.Location;
+                const country = location.split(',').pop().trim();
+                if (!country) return;
+                
+                if (!countryBuilders[country]) {
+                    countryBuilders[country] = [];
+                }
+                countryBuilders[country].push(builder);
+            });
+            
+            // Add markers for each country
+            Object.entries(countryBuilders).forEach(([country, countryData]) => {
+                const coords = getCoordinates(country);
+                const marker = L.circleMarker(coords, {
+                    radius: Math.min(Math.max(Math.sqrt(countryData.length) * 3, 8), 20),
+                    fillColor: '#FF9900', // AWS Orange
+                    color: '#fff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                const popupContent = `
+                    <div class="map-popup">
+                        <h3>${country}</h3>
+                        <p><strong>${countryData.length}</strong> Community Builders</p>
+                        <ul class="map-list">
+                            ${countryData.slice(0, 5).map(builder => `<li>${builder.Name}</li>`).join('')}
+                            ${countryData.length > 5 ? `<li>and ${countryData.length - 5} more...</li>` : ''}
+                        </ul>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent);
+            });
+            
+            // Create category chart
+            const categoryData = {};
+            builders.forEach(builder => {
+                if (builder.Category) {
+                    const category = builder.Category.split(' Builder')[0];
+                    if (!categoryData[category]) {
+                        categoryData[category] = 0;
+                    }
+                    categoryData[category]++;
+                }
+            });
+            
+            // Sort categories by count
+            const sortedCategories = Object.entries(categoryData)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10); // Top 10 categories
+            
+            // Create bar chart if D3 is available
+            if (typeof d3 !== 'undefined') {
+                try {
+                    const svg = d3.select('#categoryChart');
+                    const width = parseInt(svg.style('width')) || 600;
+                    const height = parseInt(svg.style('height')) || 400;
+                    const margin = {top: 20, right: 30, bottom: 100, left: 60};
+                    const chartWidth = width - margin.left - margin.right;
+                    const chartHeight = height - margin.top - margin.bottom;
+                    
+                    const chart = svg.append('g')
+                        .attr('transform', `translate(${margin.left},${margin.top})`);
+                        
+                    const x = d3.scaleBand()
+                        .domain(sortedCategories.map(d => d[0]))
+                        .range([0, chartWidth])
+                        .padding(0.1);
+                        
+                    const y = d3.scaleLinear()
+                        .domain([0, d3.max(sortedCategories, d => d[1])])
+                        .nice()
+                        .range([chartHeight, 0]);
+                        
+                    // Add bars
+                    chart.selectAll('.bar')
+                        .data(sortedCategories)
+                        .enter()
+                        .append('rect')
+                        .attr('class', 'bar')
+                        .attr('x', d => x(d[0]))
+                        .attr('y', d => y(d[1]))
+                        .attr('width', x.bandwidth())
+                        .attr('height', d => chartHeight - y(d[1]))
+                        .attr('fill', '#FF9900'); // AWS Orange
+                        
+                    // Add x-axis
+                    chart.append('g')
+                        .attr('transform', `translate(0,${chartHeight})`)
+                        .call(d3.axisBottom(x))
+                        .selectAll('text')
+                        .attr('transform', 'rotate(-45)')
+                        .style('text-anchor', 'end')
+                        .attr('dx', '-.8em')
+                        .attr('dy', '.15em');
+                        
+                    // Add y-axis
+                    chart.append('g')
+                        .call(d3.axisLeft(y));
+                        
+                    // Add labels
+                    chart.selectAll('.label')
+                        .data(sortedCategories)
+                        .enter()
+                        .append('text')
+                        .attr('class', 'label')
+                        .attr('x', d => x(d[0]) + x.bandwidth() / 2)
+                        .attr('y', d => y(d[1]) - 5)
+                        .attr('text-anchor', 'middle')
+                        .text(d => d[1]);
+                } catch (e) {
+                    console.error('Error creating chart:', e);
+                    document.querySelector('.chart-container').innerHTML = '<p>Chart loading error. Please refresh the page.</p>';
+                }
+            }
+            
+            // Display community builders
+            const itemsPerPage = 12;
+            let currentPage = 1;
+            let filteredBuilders = [...builders];
+            
+            function renderBuilders() {
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                const buildersToShow = filteredBuilders.slice(startIndex, endIndex);
+                
+                const container = document.getElementById('buildersList');
+                container.innerHTML = '';
+                
+                if (buildersToShow.length === 0) {
+                    container.innerHTML = '<p>No community builders match your search criteria.</p>';
+                    return;
+                }
+                
+                buildersToShow.forEach(builder => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    
+                    let bioLink = '';
+                    if (builder['Bio URL'] && builder['Bio URL'] !== 'No URL') {
+                        bioLink = `<p><a href="${builder['Bio URL']}" target="_blank">View Profile</a></p>`;
+                    }
+                    
+                    card.innerHTML = `
+                        <h3>${builder.Name || 'Unknown Builder'}</h3>
+                        <p><strong>Location:</strong> ${builder.Location || 'Unknown Location'}</p>
+                        <p><strong>Category:</strong> ${builder.Category || 'Unknown Category'}</p>
+                        ${bioLink}
+                    `;
+                    container.appendChild(card);
+                });
+                
+                renderPagination();
+            }
+            
+            function renderPagination() {
+                const totalPages = Math.ceil(filteredBuilders.length / itemsPerPage);
+                const pagination = document.getElementById('pagination');
+                pagination.innerHTML = '';
+                
+                if (totalPages <= 1) {
+                    return;
+                }
+                
+                // Previous button
+                const prevBtn = document.createElement('button');
+                prevBtn.className = 'page-btn';
+                prevBtn.textContent = '←';
+                prevBtn.disabled = currentPage === 1;
+                prevBtn.addEventListener('click', () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        renderBuilders();
+                    }
+                });
+                pagination.appendChild(prevBtn);
+                
+                // Page buttons (show max 5 pages with ellipsis)
+                const maxVisiblePages = 5;
+                let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                
+                if (endPage - startPage + 1 < maxVisiblePages) {
+                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                }
+                
+                if (startPage > 1) {
+                    const firstBtn = document.createElement('button');
+                    firstBtn.className = 'page-btn';
+                    firstBtn.textContent = '1';
+                    firstBtn.addEventListener('click', () => {
+                        currentPage = 1;
+                        renderBuilders();
+                    });
+                    pagination.appendChild(firstBtn);
+                    
+                    if (startPage > 2) {
+                        const ellipsis = document.createElement('span');
+                        ellipsis.textContent = '...';
+                        ellipsis.style.margin = '0 0.5rem';
+                        pagination.appendChild(ellipsis);
+                    }
+                }
+                
+                for (let i = startPage; i <= endPage; i++) {
+                    const pageBtn = document.createElement('button');
+                    pageBtn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+                    pageBtn.textContent = i;
+                    pageBtn.addEventListener('click', () => {
+                        currentPage = i;
+                        renderBuilders();
+                    });
+                    pagination.appendChild(pageBtn);
+                }
+                
+                if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) {
+                        const ellipsis = document.createElement('span');
+                        ellipsis.textContent = '...';
+                        ellipsis.style.margin = '0 0.5rem';
+                        pagination.appendChild(ellipsis);
+                    }
+                    
+                    const lastBtn = document.createElement('button');
+                    lastBtn.className = 'page-btn';
+                    lastBtn.textContent = totalPages;
+                    lastBtn.addEventListener('click', () => {
+                        currentPage = totalPages;
+                        renderBuilders();
+                    });
+                    pagination.appendChild(lastBtn);
+                }
+                
+                // Next button
+                const nextBtn = document.createElement('button');
+                nextBtn.className = 'page-btn';
+                nextBtn.textContent = '→';
+                nextBtn.disabled = currentPage === totalPages;
+                nextBtn.addEventListener('click', () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        renderBuilders();
+                    }
+                });
+                pagination.appendChild(nextBtn);
+            }
+            
+            // Search functionality
+            document.getElementById('builderSearch').addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                filteredBuilders = builders.filter(builder => 
+                    (builder.Name && builder.Name.toLowerCase().includes(searchTerm)) || 
+                    (builder.Location && builder.Location.toLowerCase().includes(searchTerm)) ||
+                    (builder.Category && builder.Category.toLowerCase().includes(searchTerm))
+                );
+                currentPage = 1;
+                renderBuilders();
+            });
+            
+            // Filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const filter = this.dataset.filter;
+                    
+                    if (filter === 'all') {
+                        filteredBuilders = [...builders];
+                    } else {
+                        filteredBuilders = builders.filter(builder => 
+                            builder.Category && builder.Category.toLowerCase().includes(filter.toLowerCase())
+                        );
+                    }
+                    
+                    currentPage = 1;
+                    renderBuilders();
+                });
+            });
+            
+            // Initial render
+            renderBuilders();
+        })
+        .catch(error => {
+            console.error('Error loading community builders data:', error);
+            document.getElementById('totalBuilders').textContent = 'Error';
+            document.getElementById('totalCategories').textContent = 'Error';
+            document.getElementById('totalCountries').textContent = 'Error';
+            document.getElementById('buildersList').innerHTML = '<p>Error loading community builders data. Please refresh the page.</p>';
+            document.getElementById('map').innerHTML = '<p>Error loading map data. Please refresh the page.</p>';
+            document.querySelector('.chart-container').innerHTML = '<p>Error loading chart data. Please refresh the page.</p>';
+            
+            // Fallback to hardcoded data for demonstration
+            console.log('Falling back to hardcoded data');
+            
+            // Update stats with fallback data
+            document.getElementById('totalBuilders').textContent = '600+';
+            document.getElementById('totalCategories').textContent = '12+';
+            document.getElementById('totalCountries').textContent = '50+';
+            
+            // Display fallback builders
+            const fallbackBuilders = [
+                { name: 'Jane Smith', location: 'Seattle, USA', category: 'Serverless Builder since 2022', bioUrl: '#' },
+                { name: 'John Doe', location: 'London, UK', category: 'Containers Builder since 2021', bioUrl: '#' },
+                { name: 'Maria Garcia', location: 'Madrid, Spain', category: 'Machine Learning Builder since 2023', bioUrl: '#' },
+                { name: 'Raj Patel', location: 'Mumbai, India', category: 'Security Builder since 2022', bioUrl: '#' },
+                { name: 'Yuki Tanaka', location: 'Tokyo, Japan', category: 'DevOps Builder since 2021', bioUrl: '#' },
+                { name: 'Sarah Johnson', location: 'Sydney, Australia', category: 'Front-End Web & Mobile Builder since 2023', bioUrl: '#' }
+            ];
+            
+            const container = document.getElementById('buildersList');
+            container.innerHTML = '';
+            
+            fallbackBuilders.forEach(builder => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                
+                let bioLink = '';
+                if (builder.bioUrl) {
+                    bioLink = `<p><a href="${builder.bioUrl}" target="_blank">View Profile</a></p>`;
+                }
+                
+                card.innerHTML = `
+                    <h3>${builder.name}</h3>
+                    <p><strong>Location:</strong> ${builder.location}</p>
+                    <p><strong>Category:</strong> ${builder.category}</p>
+                    ${bioLink}
+                `;
+                container.appendChild(card);
+            });
+        });
+});
+</script>
+{{ end }}

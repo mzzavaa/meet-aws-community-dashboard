@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head><script src="/meet-aws-community/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=meet-aws-community/livereload" data-no-instant defer></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Community Builders | Meet the AWS Community</title>
+    
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --aws-orange: #FF9900;
+            --aws-dark-blue: #232F3E;
+            --aws-purple: #8C4799;
+            --aws-light-blue: #1A73E8;
+            --aws-light-gray: #F2F3F3;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            line-height: 1.6;
+            background-color: var(--aws-light-gray);
+        }
+        
+        header {
+            background-color: var(--aws-dark-blue);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            border-bottom: 4px solid var(--aws-orange);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .site-title {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        
+        nav {
+            background-color: var(--aws-dark-blue);
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: center;
+        }
+        
+        nav ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            gap: 2rem;
+        }
+        
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        nav a:hover, nav a.active {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            background-color: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        footer {
+            background-color: var(--aws-dark-blue);
+            color: white;
+            text-align: center;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        h1, h2, h3 {
+            color: var(--aws-dark-blue);
+        }
+        
+        a {
+            color: var(--aws-orange);
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .card h3 {
+            margin-top: 0;
+            color: var(--aws-dark-blue);
+            border-bottom: 2px solid var(--aws-orange);
+            padding-bottom: 0.5rem;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        
+        .user-groups {
+            border-left: 4px solid var(--aws-purple);
+            padding-left: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .user-groups h2 {
+            color: var(--aws-purple);
+        }
+        
+        .community-builders {
+            border-left: 4px solid var(--aws-light-blue);
+            padding-left: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .community-builders h2 {
+            color: var(--aws-light-blue);
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+        
+        .stat-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            text-align: center;
+            min-width: 200px;
+            margin: 1rem;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--aws-orange);
+        }
+        
+        .stat-label {
+            font-size: 1rem;
+            color: var(--aws-dark-blue);
+        }
+        
+        #map, #worldMap {
+            height: 500px;
+            width: 100%;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+        
+        .chart-container {
+            margin: 2rem 0;
+            height: 400px;
+        }
+        
+        .search-container {
+            margin: 2rem 0;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .filter-btn:hover, .filter-btn.active {
+            background-color: var(--aws-orange);
+            color: white;
+            border-color: var(--aws-orange);
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+        
+        .page-btn {
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 0.5rem 1rem;
+            margin: 0 0.25rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .page-btn:hover, .page-btn.active {
+            background-color: var(--aws-orange);
+            color: white;
+            border-color: var(--aws-orange);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--aws-dark-blue);
+        }
+        
+        .map-popup h3 {
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+        
+        .map-popup p {
+            margin: 0.5rem 0;
+        }
+        
+        .map-list {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+        
+        .leaflet-popup-content {
+            min-width: 200px;
+        }
+        
+        @media (max-width: 768px) {
+            nav ul {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1 class="site-title">Meet the AWS Community</h1>
+        <nav>
+            <ul>
+                <li><a href="http://localhost:1313/meet-aws-community/" class="">Home</a></li>
+                <li><a href="/meet-aws-community/user-groups" class="">User Groups</a></li>
+                <li><a href="/meet-aws-community/community-builders" class="">Community Builders</a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    <main>
+        
+
+
+<div class="content">
+    <h1>AWS Community Builders</h1>
+    <p>Discover AWS Community Builders from around the world</p>
+    
+    <p>AWS Community Builders are passionate AWS enthusiasts who share their knowledge and expertise with the community through content creation, speaking engagements, and more.</p>
+
+    
+    <div class="search-container">
+        <input type="text" id="builderSearch" class="search-input" placeholder="Search community builders by name, location, or category...">
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">All Categories</button>
+            <button class="filter-btn" data-filter="serverless">Serverless</button>
+            <button class="filter-btn" data-filter="containers">Containers</button>
+            <button class="filter-btn" data-filter="ml">Machine Learning</button>
+            <button class="filter-btn" data-filter="security">Security</button>
+        </div>
+    </div>
+    
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-number" id="totalBuilders">0</div>
+            <div class="stat-label">Community Builders</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="totalCategories">0</div>
+            <div class="stat-label">Categories</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="totalCountries">0</div>
+            <div class="stat-label">Countries</div>
+        </div>
+    </div>
+    
+    <div class="chart-container">
+        <h2>Community Builders by Category</h2>
+        <svg id="categoryChart" width="100%" height="100%"></svg>
+    </div>
+    
+    <div id="map"></div>
+    
+    <h2>All Community Builders</h2>
+    <div id="buildersList" class="grid">
+        
+        <div class="loading">Loading community builders data...</div>
+    </div>
+    
+    <div class="pagination" id="pagination">
+        
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Community Builders page loaded, initializing...');
+    
+    
+    const map = L.map('map').setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+    
+    
+    function parseCSV(text) {
+        try {
+            const lines = text.split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            
+            return lines.slice(1)
+                .filter(line => line.trim())
+                .map(line => {
+                    
+                    const values = [];
+                    let inQuotes = false;
+                    let currentValue = '';
+                    
+                    for (let i = 0; i < line.length; i++) {
+                        const char = line[i];
+                        
+                        if (char === '"') {
+                            inQuotes = !inQuotes;
+                        } else if (char === ',' && !inQuotes) {
+                            values.push(currentValue);
+                            currentValue = '';
+                        } else {
+                            currentValue += char;
+                        }
+                    }
+                    
+                    values.push(currentValue);
+                    
+                    
+                    const entry = {};
+                    headers.forEach((header, i) => {
+                        entry[header] = values[i] ? values[i].replace(/^"(.*)"$/, '$1') : '';
+                    });
+                    
+                    return entry;
+                });
+        } catch (e) {
+            console.error('CSV parsing error:', e);
+            return [];
+        }
+    }
+    
+    
+    function getCoordinates(locationStr) {
+        if (!locationStr) return [0, 0];
+        
+        
+        const hash = locationStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const lat = (hash % 140) - 70; 
+        const lng = (hash * 31 % 320) - 160; 
+        
+        return [lat, lng];
+    }
+    
+    
+    const buildersUrl = "http:\/\/localhost:1313\/meet-aws-community\/data\/community_builders_complete.csv";
+    console.log("Loading community builders from:", buildersUrl);
+    
+    
+    fetch(buildersUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(text => {
+            
+            const builders = parseCSV(text);
+            console.log(`Loaded ${builders.length} community builders`);
+            
+            if (builders.length === 0) {
+                throw new Error('No community builders data available');
+            }
+            
+            
+            document.getElementById('totalBuilders').textContent = builders.length;
+            
+            
+            const categories = new Set();
+            builders.forEach(builder => {
+                if (builder.Category) {
+                    categories.add(builder.Category.split(' Builder')[0]);
+                }
+            });
+            document.getElementById('totalCategories').textContent = categories.size;
+            
+            
+            const countries = new Set();
+            builders.forEach(builder => {
+                if (builder.Location) {
+                    const country = builder.Location.split(',').pop().trim();
+                    if (country) countries.add(country);
+                }
+            });
+            document.getElementById('totalCountries').textContent = countries.size;
+            
+            
+            const countryBuilders = {};
+            builders.forEach(builder => {
+                if (!builder.Location) return;
+                
+                const location = builder.Location;
+                const country = location.split(',').pop().trim();
+                if (!country) return;
+                
+                if (!countryBuilders[country]) {
+                    countryBuilders[country] = [];
+                }
+                countryBuilders[country].push(builder);
+            });
+            
+            
+            Object.entries(countryBuilders).forEach(([country, countryData]) => {
+                const coords = getCoordinates(country);
+                const marker = L.circleMarker(coords, {
+                    radius: Math.min(Math.max(Math.sqrt(countryData.length) * 3, 8), 20),
+                    fillColor: '#FF9900', 
+                    color: '#fff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                const popupContent = `
+                    <div class="map-popup">
+                        <h3>${country}</h3>
+                        <p><strong>${countryData.length}</strong> Community Builders</p>
+                        <ul class="map-list">
+                            ${countryData.slice(0, 5).map(builder => `<li>${builder.Name}</li>`).join('')}
+                            ${countryData.length > 5 ? `<li>and ${countryData.length - 5} more...</li>` : ''}
+                        </ul>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent);
+            });
+            
+            
+            const categoryData = {};
+            builders.forEach(builder => {
+                if (builder.Category) {
+                    const category = builder.Category.split(' Builder')[0];
+                    if (!categoryData[category]) {
+                        categoryData[category] = 0;
+                    }
+                    categoryData[category]++;
+                }
+            });
+            
+            
+            const sortedCategories = Object.entries(categoryData)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10); 
+            
+            
+            if (typeof d3 !== 'undefined') {
+                try {
+                    const svg = d3.select('#categoryChart');
+                    const width = parseInt(svg.style('width')) || 600;
+                    const height = parseInt(svg.style('height')) || 400;
+                    const margin = {top: 20, right: 30, bottom: 100, left: 60};
+                    const chartWidth = width - margin.left - margin.right;
+                    const chartHeight = height - margin.top - margin.bottom;
+                    
+                    const chart = svg.append('g')
+                        .attr('transform', `translate(${margin.left},${margin.top})`);
+                        
+                    const x = d3.scaleBand()
+                        .domain(sortedCategories.map(d => d[0]))
+                        .range([0, chartWidth])
+                        .padding(0.1);
+                        
+                    const y = d3.scaleLinear()
+                        .domain([0, d3.max(sortedCategories, d => d[1])])
+                        .nice()
+                        .range([chartHeight, 0]);
+                        
+                    
+                    chart.selectAll('.bar')
+                        .data(sortedCategories)
+                        .enter()
+                        .append('rect')
+                        .attr('class', 'bar')
+                        .attr('x', d => x(d[0]))
+                        .attr('y', d => y(d[1]))
+                        .attr('width', x.bandwidth())
+                        .attr('height', d => chartHeight - y(d[1]))
+                        .attr('fill', '#FF9900'); 
+                        
+                    
+                    chart.append('g')
+                        .attr('transform', `translate(0,${chartHeight})`)
+                        .call(d3.axisBottom(x))
+                        .selectAll('text')
+                        .attr('transform', 'rotate(-45)')
+                        .style('text-anchor', 'end')
+                        .attr('dx', '-.8em')
+                        .attr('dy', '.15em');
+                        
+                    
+                    chart.append('g')
+                        .call(d3.axisLeft(y));
+                        
+                    
+                    chart.selectAll('.label')
+                        .data(sortedCategories)
+                        .enter()
+                        .append('text')
+                        .attr('class', 'label')
+                        .attr('x', d => x(d[0]) + x.bandwidth() / 2)
+                        .attr('y', d => y(d[1]) - 5)
+                        .attr('text-anchor', 'middle')
+                        .text(d => d[1]);
+                } catch (e) {
+                    console.error('Error creating chart:', e);
+                    document.querySelector('.chart-container').innerHTML = '<p>Chart loading error. Please refresh the page.</p>';
+                }
+            }
+            
+            
+            const itemsPerPage = 12;
+            let currentPage = 1;
+            let filteredBuilders = [...builders];
+            
+            function renderBuilders() {
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                const buildersToShow = filteredBuilders.slice(startIndex, endIndex);
+                
+                const container = document.getElementById('buildersList');
+                container.innerHTML = '';
+                
+                if (buildersToShow.length === 0) {
+                    container.innerHTML = '<p>No community builders match your search criteria.</p>';
+                    return;
+                }
+                
+                buildersToShow.forEach(builder => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    
+                    let bioLink = '';
+                    if (builder['Bio URL'] && builder['Bio URL'] !== 'No URL') {
+                        bioLink = `<p><a href="${builder['Bio URL']}" target="_blank">View Profile</a></p>`;
+                    }
+                    
+                    card.innerHTML = `
+                        <h3>${builder.Name || 'Unknown Builder'}</h3>
+                        <p><strong>Location:</strong> ${builder.Location || 'Unknown Location'}</p>
+                        <p><strong>Category:</strong> ${builder.Category || 'Unknown Category'}</p>
+                        ${bioLink}
+                    `;
+                    container.appendChild(card);
+                });
+                
+                renderPagination();
+            }
+            
+            function renderPagination() {
+                const totalPages = Math.ceil(filteredBuilders.length / itemsPerPage);
+                const pagination = document.getElementById('pagination');
+                pagination.innerHTML = '';
+                
+                if (totalPages <= 1) {
+                    return;
+                }
+                
+                
+                const prevBtn = document.createElement('button');
+                prevBtn.className = 'page-btn';
+                prevBtn.textContent = '←';
+                prevBtn.disabled = currentPage === 1;
+                prevBtn.addEventListener('click', () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        renderBuilders();
+                    }
+                });
+                pagination.appendChild(prevBtn);
+                
+                
+                const maxVisiblePages = 5;
+                let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                
+                if (endPage - startPage + 1 < maxVisiblePages) {
+                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                }
+                
+                if (startPage > 1) {
+                    const firstBtn = document.createElement('button');
+                    firstBtn.className = 'page-btn';
+                    firstBtn.textContent = '1';
+                    firstBtn.addEventListener('click', () => {
+                        currentPage = 1;
+                        renderBuilders();
+                    });
+                    pagination.appendChild(firstBtn);
+                    
+                    if (startPage > 2) {
+                        const ellipsis = document.createElement('span');
+                        ellipsis.textContent = '...';
+                        ellipsis.style.margin = '0 0.5rem';
+                        pagination.appendChild(ellipsis);
+                    }
+                }
+                
+                for (let i = startPage; i <= endPage; i++) {
+                    const pageBtn = document.createElement('button');
+                    pageBtn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+                    pageBtn.textContent = i;
+                    pageBtn.addEventListener('click', () => {
+                        currentPage = i;
+                        renderBuilders();
+                    });
+                    pagination.appendChild(pageBtn);
+                }
+                
+                if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) {
+                        const ellipsis = document.createElement('span');
+                        ellipsis.textContent = '...';
+                        ellipsis.style.margin = '0 0.5rem';
+                        pagination.appendChild(ellipsis);
+                    }
+                    
+                    const lastBtn = document.createElement('button');
+                    lastBtn.className = 'page-btn';
+                    lastBtn.textContent = totalPages;
+                    lastBtn.addEventListener('click', () => {
+                        currentPage = totalPages;
+                        renderBuilders();
+                    });
+                    pagination.appendChild(lastBtn);
+                }
+                
+                
+                const nextBtn = document.createElement('button');
+                nextBtn.className = 'page-btn';
+                nextBtn.textContent = '→';
+                nextBtn.disabled = currentPage === totalPages;
+                nextBtn.addEventListener('click', () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        renderBuilders();
+                    }
+                });
+                pagination.appendChild(nextBtn);
+            }
+            
+            
+            document.getElementById('builderSearch').addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                filteredBuilders = builders.filter(builder => 
+                    (builder.Name && builder.Name.toLowerCase().includes(searchTerm)) || 
+                    (builder.Location && builder.Location.toLowerCase().includes(searchTerm)) ||
+                    (builder.Category && builder.Category.toLowerCase().includes(searchTerm))
+                );
+                currentPage = 1;
+                renderBuilders();
+            });
+            
+            
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const filter = this.dataset.filter;
+                    
+                    if (filter === 'all') {
+                        filteredBuilders = [...builders];
+                    } else {
+                        filteredBuilders = builders.filter(builder => 
+                            builder.Category && builder.Category.toLowerCase().includes(filter.toLowerCase())
+                        );
+                    }
+                    
+                    currentPage = 1;
+                    renderBuilders();
+                });
+            });
+            
+            
+            renderBuilders();
+        })
+        .catch(error => {
+            console.error('Error loading community builders data:', error);
+            document.getElementById('totalBuilders').textContent = 'Error';
+            document.getElementById('totalCategories').textContent = 'Error';
+            document.getElementById('totalCountries').textContent = 'Error';
+            document.getElementById('buildersList').innerHTML = '<p>Error loading community builders data. Please refresh the page.</p>';
+            document.getElementById('map').innerHTML = '<p>Error loading map data. Please refresh the page.</p>';
+            document.querySelector('.chart-container').innerHTML = '<p>Error loading chart data. Please refresh the page.</p>';
+            
+            
+            console.log('Falling back to hardcoded data');
+            
+            
+            document.getElementById('totalBuilders').textContent = '600+';
+            document.getElementById('totalCategories').textContent = '12+';
+            document.getElementById('totalCountries').textContent = '50+';
+            
+            
+            const fallbackBuilders = [
+                { name: 'Jane Smith', location: 'Seattle, USA', category: 'Serverless Builder since 2022', bioUrl: '#' },
+                { name: 'John Doe', location: 'London, UK', category: 'Containers Builder since 2021', bioUrl: '#' },
+                { name: 'Maria Garcia', location: 'Madrid, Spain', category: 'Machine Learning Builder since 2023', bioUrl: '#' },
+                { name: 'Raj Patel', location: 'Mumbai, India', category: 'Security Builder since 2022', bioUrl: '#' },
+                { name: 'Yuki Tanaka', location: 'Tokyo, Japan', category: 'DevOps Builder since 2021', bioUrl: '#' },
+                { name: 'Sarah Johnson', location: 'Sydney, Australia', category: 'Front-End Web & Mobile Builder since 2023', bioUrl: '#' }
+            ];
+            
+            const container = document.getElementById('buildersList');
+            container.innerHTML = '';
+            
+            fallbackBuilders.forEach(builder => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                
+                let bioLink = '';
+                if (builder.bioUrl) {
+                    bioLink = `<p><a href="${builder.bioUrl}" target="_blank">View Profile</a></p>`;
+                }
+                
+                card.innerHTML = `
+                    <h3>${builder.name}</h3>
+                    <p><strong>Location:</strong> ${builder.location}</p>
+                    <p><strong>Category:</strong> ${builder.category}</p>
+                    ${bioLink}
+                `;
+                container.appendChild(card);
+            });
+        });
+});
+</script>
+
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 Meet the AWS Community. All rights reserved.</p>
+        <p>Powered by Hugo | Data visualizations by D3.js</p>
+    </footer>
+    
+    <script>
+    
+    window.addEventListener('error', function(e) {
+        console.error('Global error caught:', e.error);
+        
+    });
+    </script>
+</body>
+</html>

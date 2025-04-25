@@ -1,0 +1,32 @@
+baseURL = "https://mzzavaa.github.io/meet-aws-community/"
+title = "Meet the AWS Community"
+languageCode = "en-us"
+theme = "simple"
+
+# Enable Hugo's asset pipeline for better resource handling
+[module]
+  [[module.mounts]]
+    source = "static"
+    target = "static"
+
+# Main navigation menu
+[menu]
+  [[menu.main]]
+    name = "Home"
+    url = "/"
+    weight = 1
+  [[menu.main]]
+    name = "User Groups"
+    url = "/user-groups/"
+    weight = 2
+  [[menu.main]]
+    name = "Community Builders"
+    url = "/community-builders/"
+    weight = 3
+
+# Server configuration for development
+[server]
+  [[server.headers]]
+    for = "/**"
+    [server.headers.values]
+      Access-Control-Allow-Origin = "*"

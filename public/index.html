@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+	<meta name="generator" content="Hugo 0.146.7"><script src="/meet-aws-community/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=meet-aws-community/livereload" data-no-instant defer></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meet the AWS Community | Meet the AWS Community</title>
+    
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --aws-orange: #FF9900;
+            --aws-dark-blue: #232F3E;
+            --aws-purple: #8C4799;
+            --aws-light-blue: #1A73E8;
+            --aws-light-gray: #F2F3F3;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            line-height: 1.6;
+            background-color: var(--aws-light-gray);
+        }
+        
+        header {
+            background-color: var(--aws-dark-blue);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            border-bottom: 4px solid var(--aws-orange);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .site-title {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        
+        nav {
+            background-color: var(--aws-dark-blue);
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: center;
+        }
+        
+        nav ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            gap: 2rem;
+        }
+        
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        nav a:hover, nav a.active {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            background-color: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        footer {
+            background-color: var(--aws-dark-blue);
+            color: white;
+            text-align: center;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        h1, h2, h3 {
+            color: var(--aws-dark-blue);
+        }
+        
+        a {
+            color: var(--aws-orange);
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .card h3 {
+            margin-top: 0;
+            color: var(--aws-dark-blue);
+            border-bottom: 2px solid var(--aws-orange);
+            padding-bottom: 0.5rem;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        
+        .user-groups {
+            border-left: 4px solid var(--aws-purple);
+            padding-left: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .user-groups h2 {
+            color: var(--aws-purple);
+        }
+        
+        .community-builders {
+            border-left: 4px solid var(--aws-light-blue);
+            padding-left: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .community-builders h2 {
+            color: var(--aws-light-blue);
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+        
+        .stat-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            text-align: center;
+            min-width: 200px;
+            margin: 1rem;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--aws-orange);
+        }
+        
+        .stat-label {
+            font-size: 1rem;
+            color: var(--aws-dark-blue);
+        }
+        
+        #map, #worldMap {
+            height: 500px;
+            width: 100%;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+        
+        .chart-container {
+            margin: 2rem 0;
+            height: 400px;
+        }
+        
+        .search-container {
+            margin: 2rem 0;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .filter-btn:hover, .filter-btn.active {
+            background-color: var(--aws-orange);
+            color: white;
+            border-color: var(--aws-orange);
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+        
+        .page-btn {
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 0.5rem 1rem;
+            margin: 0 0.25rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .page-btn:hover, .page-btn.active {
+            background-color: var(--aws-orange);
+            color: white;
+            border-color: var(--aws-orange);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--aws-dark-blue);
+        }
+        
+        .map-popup h3 {
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+        
+        .map-popup p {
+            margin: 0.5rem 0;
+        }
+        
+        .map-list {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+        
+        .leaflet-popup-content {
+            min-width: 200px;
+        }
+        
+        @media (max-width: 768px) {
+            nav ul {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1 class="site-title">Meet the AWS Community</h1>
+        <nav>
+            <ul>
+                <li><a href="http://localhost:1313/meet-aws-community/" class="active">Home</a></li>
+                <li><a href="/meet-aws-community/user-groups" class="">User Groups</a></li>
+                <li><a href="/meet-aws-community/community-builders" class="">Community Builders</a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    <main>
+        
+    
+    
+    
+    <div class="content">
+        <h1>Meet the AWS Community</h1>
+        <p>A platform to discover and connect with AWS community members around the world</p>
+        
+        <h1 id="welcome-to-the-aws-community">Welcome to the AWS Community</h1>
+<p>This dashboard helps you discover AWS Heroes, Community Builders, and User Group leaders from around the world.</p>
+
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalUserGroups">0</div>
+                <div class="stat-label">User Groups</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalBuilders">0</div>
+                <div class="stat-label">Community Builders</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalCountries">0</div>
+                <div class="stat-label">Countries</div>
+            </div>
+        </div>
+        
+        <div id="worldMap" style="height: 500px; width: 100%; border-radius: 8px; margin: 2rem 0;"></div>
+        
+        <div class="user-groups">
+            <h2>AWS User Groups</h2>
+            <p>Connect with local AWS enthusiasts through AWS User Groups in your area.</p>
+            <div class="grid">
+                <div class="card">
+                    <h3>Find a User Group</h3>
+                    <p>Join an AWS User Group to network with peers, learn from experts, and share your knowledge.</p>
+                    <p><a href="/meet-aws-community/user-groups">Browse User Groups →</a></p>
+                </div>
+                <div class="card">
+                    <h3>Featured User Group</h3>
+                    <div id="featuredUserGroup">Loading...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="community-builders">
+            <h2>AWS Community Builders</h2>
+            <p>Discover content creators and technical experts in the AWS Community Builders program.</p>
+            <div class="grid">
+                <div class="card">
+                    <h3>Meet the Builders</h3>
+                    <p>Learn from AWS Community Builders who share their knowledge through blogs, videos, and more.</p>
+                    <p><a href="/meet-aws-community/community-builders">Browse Community Builders →</a></p>
+                </div>
+                <div class="card">
+                    <h3>Featured Community Builder</h3>
+                    <div id="featuredBuilder">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Home page loaded, initializing...');
+        
+        
+        function parseCSV(text) {
+            try {
+                const lines = text.split('\n');
+                const headers = lines[0].split(',').map(h => h.trim());
+                
+                return lines.slice(1)
+                    .filter(line => line.trim())
+                    .map(line => {
+                        
+                        const values = [];
+                        let inQuotes = false;
+                        let currentValue = '';
+                        
+                        for (let i = 0; i < line.length; i++) {
+                            const char = line[i];
+                            
+                            if (char === '"') {
+                                inQuotes = !inQuotes;
+                            } else if (char === ',' && !inQuotes) {
+                                values.push(currentValue);
+                                currentValue = '';
+                            } else {
+                                currentValue += char;
+                            }
+                        }
+                        
+                        values.push(currentValue);
+                        
+                        
+                        const entry = {};
+                        headers.forEach((header, i) => {
+                            entry[header] = values[i] ? values[i].replace(/^"(.*)"$/, '$1') : '';
+                        });
+                        
+                        return entry;
+                    });
+            } catch (e) {
+                console.error('CSV parsing error:', e);
+                return [];
+            }
+        }
+        
+        
+        function getCoordinates(locationStr) {
+            if (!locationStr) return [0, 0];
+            
+            
+            const hash = locationStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const lat = (hash % 140) - 70; 
+            const lng = (hash * 31 % 320) - 160; 
+            
+            return [lat, lng];
+        }
+        
+        
+        const map = L.map('worldMap').setView([20, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        
+        const legend = L.control({position: 'bottomright'});
+        legend.onAdd = (map) => {
+            const div = L.DomUtil.create('div', 'info legend');
+            div.style.backgroundColor = 'white';
+            div.style.padding = '10px';
+            div.style.borderRadius = '5px';
+            div.style.boxShadow = '0 1px 5px rgba(0,0,0,0.2)';
+            
+            div.innerHTML = `
+                <div style="margin-bottom: 5px;"><strong>AWS Community</strong></div>
+                <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                    <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: #8C4799; margin-right: 5px;"></span>
+                    <span>User Groups</span>
+                </div>
+                <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                    <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: #FF9900; margin-right: 5px;"></span>
+                    <span>Community Builders</span>
+                </div>
+            `;
+            
+            return div;
+        };
+        legend.addTo(map);
+        
+        
+        const userGroupsUrl = "http:\/\/localhost:1313\/meet-aws-community\/data\/aws_user_groups_complete.csv";
+        const buildersUrl = "http:\/\/localhost:1313\/meet-aws-community\/data\/community_builders_complete.csv";
+        
+        console.log("Loading data from:", userGroupsUrl, buildersUrl);
+        
+        
+        Promise.all([
+            fetch(userGroupsUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.text();
+                }),
+            fetch(buildersUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.text();
+                })
+        ])
+        .then(([userGroupsText, buildersText]) => {
+            
+            const userGroups = parseCSV(userGroupsText);
+            const builders = parseCSV(buildersText);
+            
+            console.log(`Loaded ${userGroups.length} user groups and ${builders.length} community builders`);
+            
+            
+            document.getElementById('totalUserGroups').textContent = userGroups.length;
+            document.getElementById('totalBuilders').textContent = builders.length;
+            
+            
+            const countries = new Set();
+            userGroups.forEach(group => {
+                if (group.Location) {
+                    const country = group.Location.split(',').pop().trim();
+                    if (country) countries.add(country);
+                }
+            });
+            
+            builders.forEach(builder => {
+                if (builder.Location) {
+                    const country = builder.Location.split(',').pop().trim();
+                    if (country) countries.add(country);
+                }
+            });
+            
+            document.getElementById('totalCountries').textContent = countries.size;
+            
+            
+            const countryData = {};
+            
+            function addToCountryData(item, type) {
+                if (!item.Location) return;
+                
+                const country = item.Location.split(',').pop().trim();
+                if (!country) return;
+                
+                if (!countryData[country]) {
+                    countryData[country] = { userGroups: 0, builders: 0 };
+                }
+                countryData[country][type]++;
+            }
+            
+            userGroups.forEach(group => addToCountryData(group, 'userGroups'));
+            builders.forEach(builder => addToCountryData(builder, 'builders'));
+            
+            
+            Object.entries(countryData).forEach(([country, data]) => {
+                const coords = getCoordinates(country);
+                
+                
+                if (data.userGroups > 0) {
+                    const ugMarker = L.circleMarker([coords[0] - 0.5, coords[1] - 0.5], {
+                        radius: Math.min(Math.max(Math.sqrt(data.userGroups) * 3, 8), 20),
+                        fillColor: '#8C4799', 
+                        color: '#fff',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+                    
+                    ugMarker.bindPopup(`
+                        <div class="map-popup">
+                            <h3>${country}</h3>
+                            <p><strong>${data.userGroups}</strong> User Groups</p>
+                        </div>
+                    `);
+                }
+                
+                
+                if (data.builders > 0) {
+                    const cbMarker = L.circleMarker([coords[0] + 0.5, coords[1] + 0.5], {
+                        radius: Math.min(Math.max(Math.sqrt(data.builders) * 3, 8), 20),
+                        fillColor: '#FF9900', 
+                        color: '#fff',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+                    
+                    cbMarker.bindPopup(`
+                        <div class="map-popup">
+                            <h3>${country}</h3>
+                            <p><strong>${data.builders}</strong> Community Builders</p>
+                        </div>
+                    `);
+                }
+            });
+            
+            
+            if (userGroups.length > 0) {
+                const randomGroupIndex = Math.floor(Math.random() * userGroups.length);
+                const featuredGroup = userGroups[randomGroupIndex];
+                
+                document.getElementById('featuredUserGroup').innerHTML = `
+                    <h4>${featuredGroup.Name || 'Unknown Group'}</h4>
+                    <p><strong>Location:</strong> ${featuredGroup.Location || 'Unknown Location'}</p>
+                    <p><a href="${featuredGroup.URL || '#'}" target="_blank">Visit Group →</a></p>
+                `;
+            } else {
+                document.getElementById('featuredUserGroup').innerHTML = '<p>No user groups available</p>';
+            }
+            
+            
+            if (builders.length > 0) {
+                const randomBuilderIndex = Math.floor(Math.random() * builders.length);
+                const featuredBuilder = builders[randomBuilderIndex];
+                
+                let bioLink = '';
+                if (featuredBuilder['Bio URL'] && featuredBuilder['Bio URL'] !== 'No URL') {
+                    bioLink = `<p><a href="${featuredBuilder['Bio URL']}" target="_blank">View Profile →</a></p>`;
+                }
+                
+                document.getElementById('featuredBuilder').innerHTML = `
+                    <h4>${featuredBuilder.Name || 'Unknown Builder'}</h4>
+                    <p><strong>Location:</strong> ${featuredBuilder.Location || 'Unknown Location'}</p>
+                    <p><strong>Category:</strong> ${featuredBuilder.Category || 'Unknown Category'}</p>
+                    ${bioLink}
+                `;
+            } else {
+                document.getElementById('featuredBuilder').innerHTML = '<p>No community builders available</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading data:', error);
+            
+            
+            console.log('Falling back to hardcoded data');
+            
+            
+            document.getElementById('totalUserGroups').textContent = '300+';
+            document.getElementById('totalBuilders').textContent = '600+';
+            document.getElementById('totalCountries').textContent = '50+';
+            
+            
+            const fallbackCountries = [
+                { name: 'United States', coords: [37.0902, -95.7129], userGroups: 50, builders: 120 },
+                { name: 'Germany', coords: [51.1657, 10.4515], userGroups: 25, builders: 40 },
+                { name: 'India', coords: [20.5937, 78.9629], userGroups: 30, builders: 80 },
+                { name: 'Brazil', coords: [-14.2350, -51.9253], userGroups: 15, builders: 30 },
+                { name: 'Australia', coords: [-25.2744, 133.7751], userGroups: 10, builders: 25 },
+                { name: 'Japan', coords: [36.2048, 138.2529], userGroups: 8, builders: 20 },
+                { name: 'United Kingdom', coords: [55.3781, -3.4360], userGroups: 20, builders: 45 }
+            ];
+            
+            fallbackCountries.forEach(country => {
+                
+                const ugMarker = L.circleMarker([country.coords[0] - 0.5, country.coords[1] - 0.5], {
+                    radius: Math.min(Math.max(Math.sqrt(country.userGroups) * 3, 8), 20),
+                    fillColor: '#8C4799', 
+                    color: '#fff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                ugMarker.bindPopup(`
+                    <div class="map-popup">
+                        <h3>${country.name}</h3>
+                        <p><strong>${country.userGroups}</strong> User Groups</p>
+                    </div>
+                `);
+                
+                
+                const cbMarker = L.circleMarker([country.coords[0] + 0.5, country.coords[1] + 0.5], {
+                    radius: Math.min(Math.max(Math.sqrt(country.builders) * 3, 8), 20),
+                    fillColor: '#FF9900', 
+                    color: '#fff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                cbMarker.bindPopup(`
+                    <div class="map-popup">
+                        <h3>${country.name}</h3>
+                        <p><strong>${country.builders}</strong> Community Builders</p>
+                    </div>
+                `);
+            });
+            
+            
+            document.getElementById('featuredUserGroup').innerHTML = `
+                <h4>AWS User Group Berlin</h4>
+                <p><strong>Location:</strong> Berlin, Germany</p>
+                <p><a href="#" target="_blank">Visit Group →</a></p>
+            `;
+            
+            
+            document.getElementById('featuredBuilder').innerHTML = `
+                <h4>Jane Smith</h4>
+                <p><strong>Location:</strong> Seattle, USA</p>
+                <p><strong>Category:</strong> Serverless Builder since 2022</p>
+                <p><a href="#" target="_blank">View Profile →</a></p>
+            `;
+        });
+    });
+    </script>
+
+    </main>
+    
+    <footer>
+        <p>&copy; 2025 Meet the AWS Community. All rights reserved.</p>
+        <p>Powered by Hugo | Data visualizations by D3.js</p>
+    </footer>
+    
+    <script>
+    
+    window.addEventListener('error', function(e) {
+        console.error('Global error caught:', e.error);
+        
+    });
+    </script>
+</body>
+</html>
