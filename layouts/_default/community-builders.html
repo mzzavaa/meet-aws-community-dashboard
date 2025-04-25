@@ -2,6 +2,7 @@
 {{ $buildersCSV := "data/community_builders_complete.csv" | absURL }}
 
 <div class="content">
+    <div id="map"></div>
     <h1>{{ .Title }}</h1>
     <p>{{ .Description }}</p>
     
@@ -33,13 +34,6 @@
         </div>
     </div>
     
-    <div class="chart-container">
-        <h2>Community Builders by Category</h2>
-        <svg id="categoryChart" width="100%" height="100%"></svg>
-    </div>
-    
-    <div id="map"></div>
-    
     <h2>All Community Builders</h2>
     <div id="buildersList" class="grid">
         <!-- Community builders will be populated here -->
@@ -49,6 +43,12 @@
     <div class="pagination" id="pagination">
         <!-- Pagination will be populated here -->
     </div>
+
+    <div class="chart-container">
+        <h2>Community Builders by Category</h2>
+        <svg id="categoryChart" width="100%" height="100%"></svg>
+    </div>
+
 </div>
 
 <script>
