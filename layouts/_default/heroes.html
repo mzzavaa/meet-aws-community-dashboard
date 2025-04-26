@@ -1,0 +1,392 @@
+{{ define "main" }}
+{{ $heroesCSV := "data/aws_heroes_final_clean.csv" | absURL }}
+
+<div class="content">
+    <div id="map"></div>
+
+    <h1>{{ .Title }}</h1>
+    <p>{{ .Description }}</p>
+    
+    {{ .Content }}
+    
+    <div class="search-container">
+        <input type="text" id="heroSearch" class="search-input" placeholder="Search AWS Heroes by name, location, or category...">
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">All Categories</button>
+            <button class="filter-btn" data-filter="serverless">Serverless</button>
+            <button class="filter-btn" data-filter="container">Container</button>
+            <button class="filter-btn" data-filter="machine learning" id="ml-filter-btn">Machine Learning</button>
+            <button class="filter-btn" data-filter="community">Community</button>
+            <button class="filter-btn" data-filter="database">Database</button>
+        </div>
+    </div>
+    
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-number" id="totalHeroes">0</div>
+            <div class="stat-label">AWS Heroes</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="totalCategories">0</div>
+            <div class="stat-label">Categories</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="totalCountries">0</div>
+            <div class="stat-label">Countries</div>
+        </div>
+    </div>
+        
+    <h2>All AWS Heroes</h2>
+    <div id="heroesList" class="grid">
+        <!-- Heroes will be populated here -->
+        <div class="loading">Loading AWS Heroes data...</div>
+    </div>
+    
+    <div class="pagination" id="pagination">
+        <!-- Pagination will be populated here -->
+    </div>
+
+    <div class="chart-container">
+        <h2>AWS Heroes by Category</h2>
+        <svg id="categoryChart" width="100%" height="100%"></svg>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('AWS Heroes page loaded, initializing...');
+    
+    // Initialize the map
+    const map = L.map('map').setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+    
+    // Use the CSV URL from Hugo
+    const heroesUrl = "{{ $heroesCSV }}";
+    console.log("Loading AWS Heroes from:", heroesUrl);
+    
+    // Load heroes data
+    fetch(heroesUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(text => {
+            // Parse CSV
+            const lines = text.split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            
+            const heroes = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                
+                // Handle commas within quoted fields
+                const values = [];
+                let inQuotes = false;
+                let currentValue = '';
+                
+                for (let j = 0; j < lines[i].length; j++) {
+                    const char = lines[i][j];
+                    
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(currentValue);
+                        currentValue = '';
+                    } else {
+                        currentValue += char;
+                    }
+                }
+                
+                values.push(currentValue);
+                
+                const hero = {};
+                headers.forEach((header, idx) => {
+                    if (idx < values.length) {
+                        hero[header] = values[idx] ? values[idx].replace(/^"(.*)"$/, '$1') : '';
+                    } else {
+                        hero[header] = '';
+                    }
+                });
+                
+                heroes.push(hero);
+            }
+            
+            console.log(`Loaded ${heroes.length} AWS Heroes`);
+            
+            // Function to update stats
+            function updateStats(filteredData) {
+                document.getElementById('totalHeroes').textContent = filteredData.length;
+                
+                const categories = new Set();
+                filteredData.forEach(hero => {
+                    if (hero.Category) {
+                        const categoryName = hero.Category.replace('AWS ', '').replace(' Hero', '');
+                        categories.add(categoryName);
+                    }
+                });
+                document.getElementById('totalCategories').textContent = categories.size;
+                
+                const countries = new Set();
+                filteredData.forEach(hero => {
+                    if (hero.Location) {
+                        const country = hero.Location.split(',').pop().trim();
+                        if (country) countries.add(country);
+                    }
+                });
+                document.getElementById('totalCountries').textContent = countries.size;
+            }
+            
+            // Add markers to the map
+            let markerGroup;
+            try {
+                markerGroup = L.markerClusterGroup();
+            } catch (e) {
+                console.warn('MarkerCluster plugin not found, using standard markers');
+                markerGroup = L.layerGroup();
+            }
+            
+            heroes.forEach(hero => {
+                if (hero.Latitude && hero.Longitude) {
+                    const lat = parseFloat(hero.Latitude);
+                    const lng = parseFloat(hero.Longitude);
+                    
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        const marker = L.marker([lat, lng]);
+                        
+                        let imageHtml = '';
+                        if (hero['Image URL']) {
+                            imageHtml = `<img src="${hero['Image URL']}" alt="${hero.Name}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin: 0 auto; display: block;">`;
+                        }
+                        
+                        const popupContent = `
+                            <div style="text-align: center; padding: 10px;">
+                                ${imageHtml}
+                                <h3>${hero.Name}</h3>
+                                <p><strong>Location:</strong> ${hero.Location}</p>
+                                <p><strong>Category:</strong> ${hero.Category}</p>
+                                <p><a href="${hero['Bio URL']}" target="_blank">View Profile</a></p>
+                            </div>
+                        `;
+                        
+                        marker.bindPopup(popupContent);
+                        markerGroup.addLayer(marker);
+                    }
+                }
+            });
+            
+            map.addLayer(markerGroup);
+            
+            // Display heroes
+            const itemsPerPage = 12;
+            let currentPage = 1;
+            let filteredHeroes = [...heroes];
+            
+            function renderHeroes() {
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                const heroesToShow = filteredHeroes.slice(startIndex, endIndex);
+                
+                const container = document.getElementById('heroesList');
+                container.innerHTML = '';
+                
+                heroesToShow.forEach(hero => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    
+                    // Create image container
+                    const imageContainer = document.createElement('div');
+                    imageContainer.style.backgroundColor = '#232F3E';
+                    imageContainer.style.padding = '15px';
+                    imageContainer.style.borderRadius = '8px 8px 0 0';
+                    imageContainer.style.textAlign = 'center';
+                    
+                    // Add hero image or fallback
+                    if (hero['Image URL']) {
+                        const img = document.createElement('img');
+                        img.src = hero['Image URL'];
+                        img.alt = hero.Name;
+                        img.style.width = '100px';
+                        img.style.height = '100px';
+                        img.style.borderRadius = '50%';
+                        img.style.objectFit = 'cover';
+                        img.style.margin = '0 auto';
+                        img.style.display = 'block';
+                        
+                        img.onerror = function() {
+                            this.style.display = 'none';
+                            
+                            // Create initials fallback
+                            const initials = hero.Name.split(' ')
+                                .filter(n => n.trim())
+                                .map(n => n.charAt(0))
+                                .join('')
+                                .substring(0, 2)
+                                .toUpperCase();
+                                
+                            const fallback = document.createElement('div');
+                            fallback.textContent = initials;
+                            fallback.style.width = '100px';
+                            fallback.style.height = '100px';
+                            fallback.style.borderRadius = '50%';
+                            fallback.style.backgroundColor = '#FF9900';
+                            fallback.style.color = 'white';
+                            fallback.style.display = 'flex';
+                            fallback.style.alignItems = 'center';
+                            fallback.style.justifyContent = 'center';
+                            fallback.style.fontSize = '2rem';
+                            fallback.style.fontWeight = 'bold';
+                            fallback.style.margin = '0 auto';
+                            
+                            imageContainer.appendChild(fallback);
+                        };
+                        
+                        imageContainer.appendChild(img);
+                    } else {
+                        // Create initials fallback
+                        const initials = hero.Name.split(' ')
+                            .filter(n => n.trim())
+                            .map(n => n.charAt(0))
+                            .join('')
+                            .substring(0, 2)
+                            .toUpperCase();
+                            
+                        const fallback = document.createElement('div');
+                        fallback.textContent = initials;
+                        fallback.style.width = '100px';
+                        fallback.style.height = '100px';
+                        fallback.style.borderRadius = '50%';
+                        fallback.style.backgroundColor = '#FF9900';
+                        fallback.style.color = 'white';
+                        fallback.style.display = 'flex';
+                        fallback.style.alignItems = 'center';
+                        fallback.style.justifyContent = 'center';
+                        fallback.style.fontSize = '2rem';
+                        fallback.style.fontWeight = 'bold';
+                        fallback.style.margin = '0 auto';
+                        
+                        imageContainer.appendChild(fallback);
+                    }
+                    
+                    card.appendChild(imageContainer);
+                    
+                    // Create content container
+                    const content = document.createElement('div');
+                    content.className = 'card-content';
+                    content.style.padding = '15px';
+                    
+                    // Add hero name
+                    const name = document.createElement('h3');
+                    name.textContent = hero.Name;
+                    name.style.margin = '0 0 10px 0';
+                    content.appendChild(name);
+                    
+                    // Add hero location
+                    const location = document.createElement('p');
+                    location.innerHTML = `<strong>Location:</strong> ${hero.Location || 'Unknown'}`;
+                    location.style.margin = '5px 0';
+                    content.appendChild(location);
+                    
+                    // Add hero category
+                    const category = document.createElement('p');
+                    category.innerHTML = `<strong>Category:</strong> ${hero.Category || 'Unknown'}`;
+                    category.style.margin = '5px 0';
+                    content.appendChild(category);
+                    
+                    // Add hero since date
+                    const since = document.createElement('p');
+                    since.innerHTML = `<strong>Since:</strong> ${hero['Since Date'] || 'Unknown'}`;
+                    since.style.margin = '5px 0';
+                    content.appendChild(since);
+                    
+                    // Add description if available
+                    if (hero.Description) {
+                        const desc = document.createElement('p');
+                        desc.textContent = hero.Description.length > 100 ? 
+                            hero.Description.substring(0, 100) + '...' : 
+                            hero.Description;
+                        desc.style.margin = '10px 0';
+                        desc.style.fontSize = '0.9rem';
+                        desc.style.fontStyle = 'italic';
+                        content.appendChild(desc);
+                    }
+                    
+                    // Add bio link
+                    if (hero['Bio URL']) {
+                        const link = document.createElement('a');
+                        link.href = hero['Bio URL'];
+                        link.textContent = 'View Profile';
+                        link.target = '_blank';
+                        link.style.display = 'inline-block';
+                        link.style.marginTop = '10px';
+                        link.style.color = '#0073bb';
+                        content.appendChild(link);
+                    }
+                    
+                    card.appendChild(content);
+                    container.appendChild(card);
+                });
+                
+                renderPagination();
+            }
+            
+            // Render pagination
+            function renderPagination() {
+                // Pagination implementation here
+                // (Similar to what you had before)
+            }
+            
+            // Search and filter functionality
+            const searchInput = document.getElementById('heroSearch');
+            searchInput.addEventListener('input', filterHeroes);
+            
+            const filterButtons = document.querySelectorAll('.filter-btn');
+            filterButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filterButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    filterHeroes();
+                });
+            });
+            
+            function filterHeroes() {
+                const searchTerm = searchInput.value.toLowerCase();
+                const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
+                
+                filteredHeroes = heroes.filter(hero => {
+                    // Search term filter
+                    const matchesSearch = 
+                        (hero.Name && hero.Name.toLowerCase().includes(searchTerm)) ||
+                        (hero.Location && hero.Location.toLowerCase().includes(searchTerm)) ||
+                        (hero.Category && hero.Category.toLowerCase().includes(searchTerm));
+                    
+                    // Category filter
+                    let matchesCategory = true;
+                    if (activeFilter !== 'all') {
+                        const category = hero.Category ? hero.Category.toLowerCase() : '';
+                        matchesCategory = category.includes(activeFilter);
+                    }
+                    
+                    return matchesSearch && matchesCategory;
+                });
+                
+                currentPage = 1;
+                updateStats(filteredHeroes);
+                renderHeroes();
+            }
+            
+            // Initial render
+            updateStats(heroes);
+            renderHeroes();
+        })
+        .catch(error => {
+            console.error('Error loading AWS Heroes data:', error);
+            document.getElementById('heroesList').innerHTML = `<p>Error loading AWS Heroes data: ${error.message}</p>`;
+        });
+});
+</script>
+{{ end }}
