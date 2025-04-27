@@ -17,7 +17,7 @@
             <button class="filter-btn" data-filter="container">Container</button>
             <button class="filter-btn" data-filter="machine learning" id="ml-filter-btn">Machine Learning</button>
             <button class="filter-btn" data-filter="community">Community</button>
-            <button class="filter-btn" data-filter="database">Database</button>
+            <button class="filter-btn" data-filter="security">Security</button>
         </div>
     </div>
     
@@ -336,8 +336,95 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Render pagination
             function renderPagination() {
-                // Pagination implementation here
-                // (Similar to what you had before)
+                const totalPages = Math.ceil(filteredHeroes.length / itemsPerPage);
+                const pagination = document.getElementById('pagination');
+                pagination.innerHTML = '';
+                
+                if (totalPages <= 1) {
+                    return;
+                }
+                
+                // Previous button
+                const prevBtn = document.createElement('button');
+                prevBtn.className = 'page-btn';
+                prevBtn.textContent = '←';
+                prevBtn.disabled = currentPage === 1;
+                prevBtn.addEventListener('click', () => {
+                    if (currentPage > 1) {
+                        currentPage--;
+                        renderHeroes();
+                    }
+                });
+                pagination.appendChild(prevBtn);
+                
+                // Page buttons (show max 5 pages with ellipsis)
+                const maxVisiblePages = 5;
+                let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+                
+                if (endPage - startPage + 1 < maxVisiblePages) {
+                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                }
+                
+                if (startPage > 1) {
+                    const firstBtn = document.createElement('button');
+                    firstBtn.className = 'page-btn';
+                    firstBtn.textContent = '1';
+                    firstBtn.addEventListener('click', () => {
+                        currentPage = 1;
+                        renderHeroes();
+                    });
+                    pagination.appendChild(firstBtn);
+                    
+                    if (startPage > 2) {
+                        const ellipsis = document.createElement('span');
+                        ellipsis.textContent = '...';
+                        ellipsis.style.margin = '0 0.5rem';
+                        pagination.appendChild(ellipsis);
+                    }
+                }
+                
+                for (let i = startPage; i <= endPage; i++) {
+                    const pageBtn = document.createElement('button');
+                    pageBtn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+                    pageBtn.textContent = i;
+                    pageBtn.addEventListener('click', () => {
+                        currentPage = i;
+                        renderHeroes();
+                    });
+                    pagination.appendChild(pageBtn);
+                }
+                
+                if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) {
+                        const ellipsis = document.createElement('span');
+                        ellipsis.textContent = '...';
+                        ellipsis.style.margin = '0 0.5rem';
+                        pagination.appendChild(ellipsis);
+                    }
+                    
+                    const lastBtn = document.createElement('button');
+                    lastBtn.className = 'page-btn';
+                    lastBtn.textContent = totalPages;
+                    lastBtn.addEventListener('click', () => {
+                        currentPage = totalPages;
+                        renderHeroes();
+                    });
+                    pagination.appendChild(lastBtn);
+                }
+                
+                // Next button
+                const nextBtn = document.createElement('button');
+                nextBtn.className = 'page-btn';
+                nextBtn.textContent = '→';
+                nextBtn.disabled = currentPage === totalPages;
+                nextBtn.addEventListener('click', () => {
+                    if (currentPage < totalPages) {
+                        currentPage++;
+                        renderHeroes();
+                    }
+                });
+                pagination.appendChild(nextBtn);
             }
             
             // Search and filter functionality
@@ -346,9 +433,23 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const filterButtons = document.querySelectorAll('.filter-btn');
             filterButtons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    filterButtons.forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
+                btn.addEventListener('click', function() {
+                    // Remove active class and reset styles from all buttons
+                    filterButtons.forEach(b => {
+                        b.classList.remove('active');
+                        b.style.backgroundColor = '';
+                        b.style.color = '';
+                        b.style.borderColor = '';
+                    });
+                    
+                    // Add active class to clicked button
+                    this.classList.add('active');
+                    
+                    // Apply orange style directly to the active button
+                    this.style.backgroundColor = '#FF9900'; // AWS Orange
+                    this.style.color = 'white';
+                    this.style.borderColor = '#FF9900';
+                    
                     filterHeroes();
                 });
             });

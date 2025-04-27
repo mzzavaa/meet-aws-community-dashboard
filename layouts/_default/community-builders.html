@@ -267,10 +267,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 markerGroupBuilder = L.layerGroup();
             }
             
+            // Group builders by country for clustering
+            const countryBuilders = {};
             
             builders.forEach(builder => {
-                console.log("Adding builder:", builder.Name, builder.Latitude, builder.Longitude);
-
+                // First try to add individual markers for builders with coordinates
                 if (builder.Latitude && builder.Longitude) {
                     const lat = parseFloat(builder.Latitude);
                     const lng = parseFloat(builder.Longitude);
@@ -278,15 +279,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!isNaN(lat) && !isNaN(lng)) {
                         const marker = L.marker([lat, lng]);
                         
-                        let imageHtml = '';
-                        
                         const popupContent = `
                             <div style="text-align: center; padding: 10px;">
-                                ${imageHtml}
                                 <h3 style="color:black">${builder.Name}</h3>
                                 <p><strong>Location:</strong> ${builder.Location}</p>
                                 <p><strong>Category:</strong> ${builder.Category}</p>
-                                <p><a href="${builder['Bio URL']}" target="_blank">View Profile</a></p>
+                                ${builder['Bio URL'] ? `<p><a href="${builder['Bio URL']}" target="_blank">View Profile</a></p>` : ''}
                             </div>
                         `;
                         
@@ -294,9 +292,72 @@ document.addEventListener('DOMContentLoaded', function() {
                         markerGroupBuilder.addLayer(marker);
                     }
                 }
+                
+                // Also group by country for country-level markers
+                if (builder.Location) {
+                    const location = builder.Location;
+                    const country = location.split(',').pop().trim();
+                    if (!country) return;
+                    
+                    if (!countryBuilders[country]) {
+                        countryBuilders[country] = [];
+                    }
+                    countryBuilders[country].push(builder);
+                }
             });
-                        
+            
+            // Add the individual markers layer
             map.addLayer(markerGroupBuilder);
+            
+            // Add country-level markers for builders without coordinates
+            Object.entries(countryBuilders).forEach(([country, countryData]) => {
+                // Filter out builders that already have individual markers
+                const buildersWithoutCoords = countryData.filter(builder => 
+                    !(builder.Latitude && builder.Longitude && 
+                      !isNaN(parseFloat(builder.Latitude)) && 
+                      !isNaN(parseFloat(builder.Longitude)))
+                );
+                
+                if (buildersWithoutCoords.length === 0) return;
+                
+                // Create a hash-based coordinate for the country
+                let lat, lng;
+                
+                // Special cases for specific countries
+                if (country === "Germany") {
+                    lat = 51.1657;
+                    lng = 10.4515;
+                } else if (country === "United States") {
+                    lat = 37.0902;
+                    lng = -95.7129;
+                } else {
+                    const hash = country.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                    lat = (hash % 140) - 70; // Range from -70 to 70
+                    lng = (hash * 31 % 320) - 160; // Range from -160 to 160
+                }
+                
+                const marker = L.circleMarker([lat, lng], {
+                    radius: Math.min(Math.max(Math.sqrt(buildersWithoutCoords.length) * 3, 8), 20),
+                    fillColor: '#FF9900', // AWS Orange
+                    color: '#fff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                
+                const popupContent = `
+                    <div class="map-popup">
+                        <h3>${country}</h3>
+                        <p><strong>${buildersWithoutCoords.length}</strong> Community Builders</p>
+                        <ul class="map-list">
+                            ${buildersWithoutCoords.slice(0, 5).map(builder => `<li>${builder.Name}</li>`).join('')}
+                            ${buildersWithoutCoords.length > 5 ? `<li>and ${buildersWithoutCoords.length - 5} more...</li>` : ''}
+                        </ul>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent);
+            });
             
             // Display community builders
             const itemsPerPage = 12;
@@ -449,8 +510,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.log("Button text:", this.textContent);
                     console.log("Button data-filter:", this.dataset.filter);
                     
-                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    // Remove active class and reset styles from all buttons
+                    document.querySelectorAll('.filter-btn').forEach(b => {
+                        b.classList.remove('active');
+                        b.style.backgroundColor = '';
+                        b.style.color = '';
+                        b.style.borderColor = '';
+                    });
+                    
+                    // Add active class to clicked button
                     this.classList.add('active');
+                    
+                    // Apply orange style directly to the active button
+                    this.style.backgroundColor = '#FF9900'; // AWS Orange
+                    this.style.color = 'white';
+                    this.style.borderColor = '#FF9900';
                     
                     const filter = this.dataset.filter.toLowerCase();
                     console.log("Filter (lowercase):", filter);

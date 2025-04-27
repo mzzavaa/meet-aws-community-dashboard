@@ -393,8 +393,21 @@ document.addEventListener('DOMContentLoaded', function() {
             // Filter buttons
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    // Remove active class and reset styles from all buttons
+                    document.querySelectorAll('.filter-btn').forEach(b => {
+                        b.classList.remove('active');
+                        b.style.backgroundColor = '';
+                        b.style.color = '';
+                        b.style.borderColor = '';
+                    });
+                    
+                    // Add active class to clicked button
                     this.classList.add('active');
+                    
+                    // Apply orange style directly to the active button
+                    this.style.backgroundColor = '#FF9900'; // AWS Orange
+                    this.style.color = 'white';
+                    this.style.borderColor = '#FF9900';
                     
                     const filter = this.dataset.filter;
                     

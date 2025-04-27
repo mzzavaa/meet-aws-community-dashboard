@@ -1,0 +1,49 @@
+/**
+ * Filter Buttons Styles
+ * Handles hover and active states for filter buttons across the site
+ */
+
+/* Base filter button styles */
+.filter-btn {
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+/* Dark mode styles */
+body.dark-mode .filter-btn {
+    background-color: var(--dark-surface-lighter);
+    border-color: #444;
+    color: var(--dark-text);
+}
+
+/* Hover effect - lighter version of the active color */
+.filter-btn:hover:not(.active) {
+    background-color: rgba(255, 153, 0, 0.2); /* Lighter version of AWS Orange */
+    border-color: rgba(255, 153, 0, 0.5);
+    color: inherit; /* Keep the original text color */
+    filter: brightness(1.1); /* Slightly increase brightness */
+}
+
+/* Active state */
+.filter-btn.active {
+    background-color: var(--aws-orange, #FF9900);
+    color: white;
+    border-color: var(--aws-orange, #FF9900);
+}
+
+/* Hover effect on active button - slightly lighter */
+.filter-btn.active:hover {
+    filter: brightness(1.1); /* Make active button slightly brighter on hover */
+}
+
+/* Transition for smooth hover effects */
+.filter-btn {
+    transition: background-color 0.2s ease, 
+                color 0.2s ease, 
+                border-color 0.2s ease, 
+                filter 0.2s ease;
+}
