@@ -16,6 +16,145 @@
     --dark-surface-lighter: #37424f;
     --dark-text: #ffffff;
     --dark-text-secondary: #d1d5db;
+    --dark-text-muted: #a0aec0;
+    --dark-border: #4a5568;
+    
+    /* Additional colors */
+    --aws-orange-dark: #E88C00;
+}
+
+/* Active navigation styles */
+nav a.active {
+    background-color: var(--aws-orange);
+    color: white;
+    font-weight: bold;
+}
+
+/* Interviews section styling */
+.interviews-section {
+    border-left: 4px solid var(--aws-purple);
+    padding-left: 1rem;
+    margin: 2rem 0;
+}
+
+.interviews-section h2 {
+    color: var(--aws-purple);
+}
+
+body.dark-mode .interviews-section h2 {
+    color: #b87dd1;
+}
+
+/* Heroes section styling */
+.heroes-section {
+    border-left: 4px solid var(--aws-orange);
+    padding-left: 1rem;
+    margin: 2rem 0;
+}
+
+.heroes-section h2 {
+    color: var(--aws-orange);
+}
+
+/* Featured hero card styling */
+.featured-hero-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.hero-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid var(--aws-orange);
+}
+
+.hero-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.hero-info h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+.hero-category {
+    background-color: var(--aws-orange);
+    color: white;
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+}
+
+.hero-link {
+    display: inline-block;
+    margin-top: 0.5rem;
+}
+
+/* Interview list styling */
+.interview-list {
+    padding-left: 1.5rem;
+}
+
+.interview-list li {
+    margin-bottom: 0.5rem;
+}
+
+/* Explore all card styling */
+.explore-all-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.explore-all-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+body.dark-mode .explore-all-card {
+    background-color: var(--dark-surface);
+}
+
+body.dark-mode .explore-all-card:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.explore-all-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: var(--aws-dark-blue);
+    transition: color 0.3s ease;
+}
+
+body.dark-mode .explore-all-link {
+    color: var(--dark-text);
+}
+
+.explore-all-link:hover {
+    color: var(--aws-orange);
+    text-decoration: none;
+}
+
+.explore-all-link i:last-child {
+    transition: transform 0.3s ease;
+}
+
+.explore-all-link:hover i:last-child {
+    transform: translateX(5px);
 }
 
 * {

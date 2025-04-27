@@ -1,0 +1,107 @@
+{{ define "main" }}
+<div class="interviews-list-page">
+    <h1>AWS Community Interviews</h1>
+    
+    <div class="interviews-grid">
+        {{ range .Pages }}
+        <div class="interview-card">
+            <h3>{{ .Title }}</h3>
+            <div class="interview-roles">
+                {{ range .Params.roles }}
+                <span class="role-badge">{{ . }}</span>
+                {{ end }}
+            </div>
+            <div class="interview-date">
+                <i class="far fa-calendar-alt"></i> {{ .Date.Format "January 2, 2006" }}
+            </div>
+            <div class="interview-actions">
+                <a href="{{ .RelPermalink }}" class="read-more-btn">Read Interview</a>
+            </div>
+        </div>
+        {{ end }}
+    </div>
+</div>
+
+<style>
+.interviews-list-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.interviews-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.interview-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.interview-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.interview-card h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+.interview-roles {
+    margin-bottom: 1rem;
+}
+
+.role-badge {
+    display: inline-block;
+    background-color: var(--aws-orange);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.interview-date {
+    color: #666;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.interview-actions {
+    margin-top: 1rem;
+}
+
+.read-more-btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: var(--aws-orange);
+    color: white;
+    border-radius: 4px;
+    text-decoration: none;
+    transition: background-color 0.3s ease;
+}
+
+.read-more-btn:hover {
+    background-color: var(--aws-orange-dark);
+    text-decoration: none;
+    color: white;
+}
+
+/* Dark mode styles */
+body.dark-mode .interview-card {
+    background-color: var(--dark-surface);
+    border-color: var(--dark-border);
+}
+
+body.dark-mode .interview-date {
+    color: var(--dark-text-muted);
+}
+</style>
+{{ end }}

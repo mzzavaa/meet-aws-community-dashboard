@@ -23,6 +23,10 @@ theme = "simple"
     name = "Community Builders"
     url = "/community-builders/"
     weight = 3
+  [[menu.main]]
+    name = "Interviews"
+    url = "/interviews/"
+    weight = 4
 
 # Server configuration for development
 [server]

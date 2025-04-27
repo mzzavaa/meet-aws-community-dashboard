@@ -1,5 +1,5 @@
 {{ define "main" }}
-{{ $heroesCSV := "data/aws_heroes_final_clean.csv" | absURL }}
+{{ $heroesCSV := "data/combined_members_with_heroes.csv" | absURL }}
 
 <div class="content">
     <div id="map"></div>
@@ -8,19 +8,7 @@
     <p>{{ .Description }}</p>
     
     {{ .Content }}
-    
-    <div class="search-container">
-        <input type="text" id="heroSearch" class="search-input" placeholder="Search AWS Heroes by name, location, or category...">
-        <div class="filters">
-            <button class="filter-btn active" data-filter="all">All Categories</button>
-            <button class="filter-btn" data-filter="serverless">Serverless</button>
-            <button class="filter-btn" data-filter="container">Container</button>
-            <button class="filter-btn" data-filter="machine learning" id="ml-filter-btn">Machine Learning</button>
-            <button class="filter-btn" data-filter="community">Community</button>
-            <button class="filter-btn" data-filter="security">Security</button>
-        </div>
-    </div>
-    
+
     <div class="stats">
         <div class="stat-card">
             <div class="stat-number" id="totalHeroes">0</div>
@@ -33,6 +21,29 @@
         <div class="stat-card">
             <div class="stat-number" id="totalCountries">0</div>
             <div class="stat-label">Countries</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="totalInterviews">0</div>
+            <div class="stat-label">Interviews</div>
+        </div>
+    </div>
+    
+    <div class="search-container">
+        <input type="text" id="heroSearch" class="search-input" placeholder="Search AWS Heroes by name, location, or category...">
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">All Categories</button>
+            <button class="filter-btn" data-filter="serverless">Serverless</button>
+            <button class="filter-btn" data-filter="container">Container</button>
+            <button class="filter-btn" data-filter="machine learning" id="ml-filter-btn">Machine Learning</button>
+            <button class="filter-btn" data-filter="community">Community</button>
+            <button class="filter-btn" data-filter="security">Security</button>
+        </div>
+        <div class="filters interview-filters">
+            <button class="filter-btn active" data-interview-filter="all">All Interview Status</button>
+            <button class="filter-btn" data-interview-filter="done">Interview Available</button>
+            <button class="filter-btn" data-interview-filter="scheduled">Scheduled</button>
+            <button class="filter-btn" data-interview-filter="next up">In Planning</button>
+            <button class="filter-btn" data-interview-filter="in progress">In Progress</button>
         </div>
     </div>
         
@@ -76,418 +87,794 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(text => {
             // Parse CSV
-            const lines = text.split('\n');
-            const headers = lines[0].split(',').map(h => h.trim());
-            
-            const heroes = [];
-            
-            for (let i = 1; i < lines.length; i++) {
-                if (!lines[i].trim()) continue;
-                
-                // Handle commas within quoted fields
-                const values = [];
-                let inQuotes = false;
-                let currentValue = '';
-                
-                for (let j = 0; j < lines[i].length; j++) {
-                    const char = lines[i][j];
-                    
-                    if (char === '"') {
-                        inQuotes = !inQuotes;
-                    } else if (char === ',' && !inQuotes) {
-                        values.push(currentValue);
-                        currentValue = '';
-                    } else {
-                        currentValue += char;
-                    }
-                }
-                
-                values.push(currentValue);
-                
-                const hero = {};
-                headers.forEach((header, idx) => {
-                    if (idx < values.length) {
-                        hero[header] = values[idx] ? values[idx].replace(/^"(.*)"$/, '$1') : '';
-                    } else {
-                        hero[header] = '';
-                    }
-                });
-                
-                heroes.push(hero);
-            }
-            
+            const heroes = parseHeroesCSV(text);
             console.log(`Loaded ${heroes.length} AWS Heroes`);
             
-            // Function to update stats
-            function updateStats(filteredData) {
-                document.getElementById('totalHeroes').textContent = filteredData.length;
-                
-                const categories = new Set();
-                filteredData.forEach(hero => {
-                    if (hero.Category) {
-                        const categoryName = hero.Category.replace('AWS ', '').replace(' Hero', '');
-                        categories.add(categoryName);
-                    }
-                });
-                document.getElementById('totalCategories').textContent = categories.size;
-                
-                const countries = new Set();
-                filteredData.forEach(hero => {
-                    if (hero.Location) {
-                        const country = hero.Location.split(',').pop().trim();
-                        if (country) countries.add(country);
-                    }
-                });
-                document.getElementById('totalCountries').textContent = countries.size;
-            }
+            // Count interviews - only count completed interviews
+            const interviewCount = heroes.filter(hero => hero.InterviewStatus && hero.InterviewStatus.toLowerCase() === 'done').length;
+            document.getElementById('totalInterviews').textContent = interviewCount;
             
-            // Add markers to the map
-            let markerGroup;
-            try {
-                markerGroup = L.markerClusterGroup();
-            } catch (e) {
-                console.warn('MarkerCluster plugin not found, using standard markers');
-                markerGroup = L.layerGroup();
-            }
+            // Initialize the UI
+            initializeUI(heroes, map);
+        })
+        .catch(error => {
+            console.error('Error loading data:', error);
+            document.getElementById('heroesList').innerHTML = `<p>Error loading data: ${error.message}</p>`;
+        });
+});
+
+// Parse Heroes CSV
+function parseHeroesCSV(text) {
+    const lines = text.split('\n');
+    const headers = lines[0].split(',').map(h => h.trim());
+    
+    console.log("CSV Headers:", headers);
+    
+    // Find indices for important columns
+    const statusIndex = headers.findIndex(h => h === 'Status');
+    const youTubeLinkIndex = headers.findIndex(h => h === 'Recording date' || h === 'YouTubeLink');
+    const interviewSlugIndex = headers.findIndex(h => h === 'InterviewSlug');
+    
+    console.log("Column indices - Status:", statusIndex, "YouTubeLink:", youTubeLinkIndex, "InterviewSlug:", interviewSlugIndex);
+    
+    const heroes = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        
+        // Handle commas within quoted fields
+        const values = [];
+        let inQuotes = false;
+        let currentValue = '';
+        
+        for (let j = 0; j < lines[i].length; j++) {
+            const char = lines[i][j];
             
-            heroes.forEach(hero => {
-                if (hero.Latitude && hero.Longitude) {
-                    const lat = parseFloat(hero.Latitude);
-                    const lng = parseFloat(hero.Longitude);
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                values.push(currentValue);
+                currentValue = '';
+            } else {
+                currentValue += char;
+            }
+        }
+        
+        values.push(currentValue);
+        
+        const hero = {};
+        headers.forEach((header, idx) => {
+            if (idx < values.length) {
+                hero[header] = values[idx] ? values[idx].replace(/^"(.*)"$/, '$1') : '';
+            } else {
+                hero[header] = '';
+            }
+        });
+        
+        // Add interview status directly from the CSV
+        if (statusIndex !== -1 && values[statusIndex]) {
+            hero.InterviewStatus = values[statusIndex].replace(/^"(.*)"$/, '$1');
+        }
+        
+        // Add YouTube link directly from the CSV
+        if (youTubeLinkIndex !== -1 && values[youTubeLinkIndex]) {
+            hero.YouTubeLink = values[youTubeLinkIndex].replace(/^"(.*)"$/, '$1');
+        }
+        
+        // Add interview slug directly from the CSV
+        if (interviewSlugIndex !== -1 && values[interviewSlugIndex]) {
+            hero.InterviewSlug = values[interviewSlugIndex].replace(/^"(.*)"$/, '$1');
+        }
+        
+        heroes.push(hero);
+    }
+    
+    // Debug: Log heroes with interview status
+    const heroesWithInterviews = heroes.filter(h => h.InterviewStatus);
+    console.log(`Found ${heroesWithInterviews.length} heroes with interview status`);
+    if (heroesWithInterviews.length > 0) {
+        console.log("Sample hero with interview:", heroesWithInterviews[0]);
+    }
+    
+    return heroes;
+}
+
+// Initialize UI with the combined data
+function initializeUI(heroes, map) {
+    // Variables for pagination and filtering
+    const itemsPerPage = 12;
+    let currentPage = 1;
+    let filteredHeroes = [...heroes];
+    let activeFilter = 'all';
+    let activeInterviewFilter = 'all';
+    
+    // Update stats
+    updateStats(heroes);
+    
+    // Add markers to the map
+    addMarkersToMap(heroes, map);
+    
+    // Display heroes
+    renderHeroes();
+    
+    // Set up event handlers
+    setupEventHandlers();
+    
+    // Create category chart
+    createCategoryChart(heroes);
+    
+    // Function to update stats
+    function updateStats(filteredData) {
+        document.getElementById('totalHeroes').textContent = filteredData.length;
+        
+        const categories = new Set();
+        filteredData.forEach(hero => {
+            if (hero.Category) {
+                const categoryName = hero.Category.replace('AWS ', '').replace(' Hero', '');
+                categories.add(categoryName);
+            }
+        });
+        document.getElementById('totalCategories').textContent = categories.size;
+        
+        const countries = new Set();
+        filteredData.forEach(hero => {
+            if (hero.Location) {
+                const country = hero.Location.split(',').pop().trim();
+                if (country) countries.add(country);
+            }
+        });
+        document.getElementById('totalCountries').textContent = countries.size;
+        
+        // Count interviews - only count completed interviews
+        const interviewCount = filteredData.filter(hero => hero.InterviewStatus && hero.InterviewStatus.toLowerCase() === 'done').length;
+        document.getElementById('totalInterviews').textContent = interviewCount;
+    }
+    
+    // Function to add markers to the map
+    function addMarkersToMap(heroes, map) {
+        let markerGroup;
+        try {
+            markerGroup = L.markerClusterGroup();
+        } catch (e) {
+            console.warn('MarkerCluster plugin not found, using standard markers');
+            markerGroup = L.layerGroup();
+        }
+        
+        heroes.forEach(hero => {
+            if (hero.Latitude && hero.Longitude) {
+                const lat = parseFloat(hero.Latitude);
+                const lng = parseFloat(hero.Longitude);
+                
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    const marker = L.marker([lat, lng]);
                     
-                    if (!isNaN(lat) && !isNaN(lng)) {
-                        const marker = L.marker([lat, lng]);
+                    let imageHtml = '';
+                    if (hero['Image URL']) {
+                        imageHtml = `<img src="${hero['Image URL']}" alt="${hero.Name}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin: 0 auto; display: block;">`;
+                    }
+                    
+                    // Add interview status to popup if available
+                    let interviewHtml = '';
+                    if (hero.InterviewStatus) {
+                        let statusClass = '';
+                        let statusIcon = '';
                         
-                        let imageHtml = '';
-                        if (hero['Image URL']) {
-                            imageHtml = `<img src="${hero['Image URL']}" alt="${hero.Name}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin: 0 auto; display: block;">`;
+                        switch(hero.InterviewStatus.toLowerCase()) {
+                            case 'done':
+                                statusClass = 'interview-done';
+                                statusIcon = 'video';
+                                break;
+                            case 'next up':
+                                statusClass = 'interview-scheduled';
+                                statusIcon = 'calendar-check';
+                                break;
+                            case 'in progress':
+                                statusClass = 'interview-in-progress';
+                                statusIcon = 'spinner fa-spin';
+                                break;
+                            default:
+                                statusClass = 'interview-other';
+                                statusIcon = 'info-circle';
                         }
                         
-                        const popupContent = `
-                            <div style="text-align: center; padding: 10px;">
-                                ${imageHtml}
-                                <h3 style="color:black">${hero.Name}</h3>
-                                <p><strong>Location:</strong> ${hero.Location}</p>
-                                <p><strong>Category:</strong> ${hero.Category}</p>
-                                <p><a href="${hero['Bio URL']}" target="_blank">View Profile</a></p>
+                        interviewHtml = `
+                            <div class="interview-badge ${statusClass}">
+                                <i class="fas fa-${statusIcon}"></i> ${hero.InterviewStatus}
                             </div>
                         `;
                         
-                        marker.bindPopup(popupContent);
-                        markerGroup.addLayer(marker);
+                        if (hero.YouTubeLink) {
+                            interviewHtml += `
+                                <div class="youtube-link">
+                                    <a href="${hero.YouTubeLink}" target="_blank" rel="noopener">
+                                        <i class="fab fa-youtube"></i> Watch Interview
+                                    </a>
+                                </div>
+                            `;
+                        }
+                        
+                        if (hero.InterviewSlug) {
+                            interviewHtml += `
+                                <div class="interview-details">
+                                    <a href="{{ .Site.BaseURL }}interviews/${hero.InterviewSlug}/" target="_blank" rel="noopener">
+                                        <i class="fas fa-file-alt"></i> View Interview Details
+                                    </a>
+                                </div>
+                            `;
+                        }
                     }
+                    
+                    const popupContent = `
+                        <div style="text-align: center; padding: 10px;">
+                            ${imageHtml}
+                            <h3 style="color:black">${hero.Name}</h3>
+                            <p><strong>Location:</strong> ${hero.Location}</p>
+                            <p><strong>Category:</strong> ${hero.Category}</p>
+                            <p><a href="${hero['Bio URL']}" target="_blank">View Profile</a></p>
+                            ${interviewHtml}
+                        </div>
+                    `;
+                    
+                    marker.bindPopup(popupContent);
+                    markerGroup.addLayer(marker);
                 }
-            });
+            }
+        });
+        
+        map.addLayer(markerGroup);
+    }
+    
+    // Function to render heroes
+    function renderHeroes() {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const heroesToShow = filteredHeroes.slice(startIndex, endIndex);
+        
+        const heroesList = document.getElementById('heroesList');
+        heroesList.innerHTML = '';
+        
+        if (heroesToShow.length === 0) {
+            heroesList.innerHTML = '<p>No heroes found matching your criteria.</p>';
+            return;
+        }
+        
+        heroesToShow.forEach(hero => {
+            const card = document.createElement('div');
+            card.className = 'card hero-card';
+            card.setAttribute('data-name', hero.Name);
+            card.setAttribute('data-interview-status', hero.InterviewStatus || 'none');
             
-            map.addLayer(markerGroup);
+            // Create card header with image
+            const cardHeader = document.createElement('div');
+            cardHeader.style.backgroundColor = '#232F3E';
+            cardHeader.style.padding = '15px';
+            cardHeader.style.borderRadius = '8px 8px 0 0';
+            cardHeader.style.textAlign = 'center';
             
-            // Display heroes
-            const itemsPerPage = 12;
-            let currentPage = 1;
-            let filteredHeroes = [...heroes];
-            
-            function renderHeroes() {
-                const startIndex = (currentPage - 1) * itemsPerPage;
-                const endIndex = startIndex + itemsPerPage;
-                const heroesToShow = filteredHeroes.slice(startIndex, endIndex);
-                
-                const container = document.getElementById('heroesList');
-                container.innerHTML = '';
-                
-                heroesToShow.forEach(hero => {
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    
-                    // Create image container
-                    const imageContainer = document.createElement('div');
-                    imageContainer.style.backgroundColor = '#232F3E';
-                    imageContainer.style.padding = '15px';
-                    imageContainer.style.borderRadius = '8px 8px 0 0';
-                    imageContainer.style.textAlign = 'center';
-                    
-                    // Add hero image or fallback
-                    if (hero['Image URL']) {
-                        const img = document.createElement('img');
-                        img.src = hero['Image URL'];
-                        img.alt = hero.Name;
-                        img.style.width = '100px';
-                        img.style.height = '100px';
-                        img.style.borderRadius = '50%';
-                        img.style.objectFit = 'cover';
-                        img.style.margin = '0 auto';
-                        img.style.display = 'block';
-                        
-                        img.onerror = function() {
-                            this.style.display = 'none';
-                            
-                            // Create initials fallback
-                            const initials = hero.Name.split(' ')
-                                .filter(n => n.trim())
-                                .map(n => n.charAt(0))
-                                .join('')
-                                .substring(0, 2)
-                                .toUpperCase();
-                                
-                            const fallback = document.createElement('div');
-                            fallback.textContent = initials;
-                            fallback.style.width = '100px';
-                            fallback.style.height = '100px';
-                            fallback.style.borderRadius = '50%';
-                            fallback.style.backgroundColor = '#FF9900';
-                            fallback.style.color = 'white';
-                            fallback.style.display = 'flex';
-                            fallback.style.alignItems = 'center';
-                            fallback.style.justifyContent = 'center';
-                            fallback.style.fontSize = '2rem';
-                            fallback.style.fontWeight = 'bold';
-                            fallback.style.margin = '0 auto';
-                            
-                            imageContainer.appendChild(fallback);
-                        };
-                        
-                        imageContainer.appendChild(img);
-                    } else {
-                        // Create initials fallback
-                        const initials = hero.Name.split(' ')
-                            .filter(n => n.trim())
-                            .map(n => n.charAt(0))
-                            .join('')
-                            .substring(0, 2)
-                            .toUpperCase();
-                            
-                        const fallback = document.createElement('div');
-                        fallback.textContent = initials;
-                        fallback.style.width = '100px';
-                        fallback.style.height = '100px';
-                        fallback.style.borderRadius = '50%';
-                        fallback.style.backgroundColor = '#FF9900';
-                        fallback.style.color = 'white';
-                        fallback.style.display = 'flex';
-                        fallback.style.alignItems = 'center';
-                        fallback.style.justifyContent = 'center';
-                        fallback.style.fontSize = '2rem';
-                        fallback.style.fontWeight = 'bold';
-                        fallback.style.margin = '0 auto';
-                        
-                        imageContainer.appendChild(fallback);
-                    }
-                    
-                    card.appendChild(imageContainer);
-                    
-                    // Create content container
-                    const content = document.createElement('div');
-                    content.className = 'card-content';
-                    content.style.padding = '15px';
-                    
-                    // Add hero name
-                    const name = document.createElement('h3');
-                    name.textContent = hero.Name;
-                    name.style.margin = '0 0 10px 0';
-                    content.appendChild(name);
-                    
-                    // Add hero location
-                    const location = document.createElement('p');
-                    location.innerHTML = `<strong>Location:</strong> ${hero.Location || 'Unknown'}`;
-                    location.style.margin = '5px 0';
-                    content.appendChild(location);
-                    
-                    // Add hero category
-                    const category = document.createElement('p');
-                    category.innerHTML = `<strong>Category:</strong> ${hero.Category || 'Unknown'}`;
-                    category.style.margin = '5px 0';
-                    content.appendChild(category);
-                    
-                    // Add hero since date
-                    const since = document.createElement('p');
-                    since.innerHTML = `<strong>Since:</strong> ${hero['Since Date'] || 'Unknown'}`;
-                    since.style.margin = '5px 0';
-                    content.appendChild(since);
-                    
-                    // Add description if available
-                    if (hero.Description) {
-                        const desc = document.createElement('p');
-                        desc.textContent = hero.Description.length > 100 ? 
-                            hero.Description.substring(0, 100) + '...' : 
-                            hero.Description;
-                        desc.style.margin = '10px 0';
-                        desc.style.fontSize = '0.9rem';
-                        desc.style.fontStyle = 'italic';
-                        content.appendChild(desc);
-                    }
-                    
-                    // Add bio link
-                    if (hero['Bio URL']) {
-                        const link = document.createElement('a');
-                        link.href = hero['Bio URL'];
-                        link.textContent = 'View Profile';
-                        link.target = '_blank';
-                        link.style.display = 'inline-block';
-                        link.style.marginTop = '10px';
-                        link.style.color = '#0073bb';
-                        content.appendChild(link);
-                    }
-                    
-                    card.appendChild(content);
-                    container.appendChild(card);
-                });
-                
-                renderPagination();
+            if (hero['Image URL']) {
+                const img = document.createElement('img');
+                img.src = hero['Image URL'];
+                img.alt = hero.Name;
+                img.style.width = '100px';
+                img.style.height = '100px';
+                img.style.borderRadius = '50%';
+                img.style.objectFit = 'cover';
+                img.style.margin = '0 auto';
+                img.style.display = 'block';
+                cardHeader.appendChild(img);
             }
             
-            // Render pagination
-            function renderPagination() {
-                const totalPages = Math.ceil(filteredHeroes.length / itemsPerPage);
-                const pagination = document.getElementById('pagination');
-                pagination.innerHTML = '';
+            // Create card content
+            const cardContent = document.createElement('div');
+            cardContent.className = 'card-content';
+            cardContent.style.padding = '15px';
+            
+            // Add hero name
+            const name = document.createElement('h3');
+            name.textContent = hero.Name;
+            name.style.margin = '0 0 10px 0';
+            cardContent.appendChild(name);
+            
+            // Add location
+            const location = document.createElement('p');
+            location.style.margin = '5px 0';
+            location.innerHTML = `<strong>Location:</strong> ${hero.Location}`;
+            cardContent.appendChild(location);
+            
+            // Add category
+            const category = document.createElement('p');
+            category.style.margin = '5px 0';
+            category.innerHTML = `<strong>Category:</strong> ${hero.Category}`;
+            cardContent.appendChild(category);
+            
+            // Add since date
+            const since = document.createElement('p');
+            since.style.margin = '5px 0';
+            since.innerHTML = `<strong>Since:</strong> ${hero['Since Date']}`;
+            cardContent.appendChild(since);
+            
+            // Add description
+            const description = document.createElement('p');
+            description.style.margin = '10px 0';
+            description.style.fontSize = '0.9rem';
+            description.style.fontStyle = 'italic';
+            description.textContent = hero.Description ? hero.Description.substring(0, 100) + '...' : '';
+            cardContent.appendChild(description);
+            
+            // Add profile link
+            const link = document.createElement('a');
+            link.href = hero['Bio URL'];
+            link.target = '_blank';
+            link.textContent = 'View Hero Profile';
+            link.style.display = 'inline-block';
+            link.style.marginTop = '10px';
+            link.style.color = '#0073bb';
+            cardContent.appendChild(link);
+            
+            // Add interview status if available
+            if (hero.InterviewStatus) {
+                const interviewBadge = document.createElement('div');
+                interviewBadge.className = 'interview-badge';
                 
-                if (totalPages <= 1) {
-                    return;
+                // Style based on status
+                switch (hero.InterviewStatus.toLowerCase()) {
+                    case 'done':
+                        interviewBadge.classList.add('interview-done');
+                        
+                        // Create a link to the interview details
+                        // Use hero name to create a slug for the markdown file
+                        const heroSlug = hero.InterviewSlug || hero.Name.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, '-');
+                        
+                        const detailsLink = document.createElement('a');
+                        detailsLink.href = `{{ .Site.BaseURL }}interviews/${heroSlug}/`;
+                        detailsLink.innerHTML = '<i class="fas fa-video"></i> Interview Available';
+                        detailsLink.style.color = 'white';
+                        detailsLink.style.textDecoration = 'none';
+                        interviewBadge.appendChild(detailsLink);
+                        break;
+                    case 'next up':
+                        interviewBadge.classList.add('interview-scheduled');
+                        interviewBadge.innerHTML = '<i class="fas fa-list"></i> In Planning';
+                        break;
+                    case 'scheduled':
+                        interviewBadge.classList.add('interview-scheduled');
+                        interviewBadge.innerHTML = '<i class="fas fa-calendar-check"></i> Interview Scheduled';
+                        break;
+                    case 'in progress':
+                        interviewBadge.classList.add('interview-in-progress');
+                        interviewBadge.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Interview In Progress';
+                        break;
+                    default:
+                        interviewBadge.classList.add('interview-other');
+                        interviewBadge.innerHTML = '<i class="fas fa-info-circle"></i> ' + hero.InterviewStatus;
                 }
                 
-                // Previous button
-                const prevBtn = document.createElement('button');
-                prevBtn.className = 'page-btn';
-                prevBtn.textContent = '←';
-                prevBtn.disabled = currentPage === 1;
-                prevBtn.addEventListener('click', () => {
-                    if (currentPage > 1) {
-                        currentPage--;
-                        renderHeroes();
+                cardContent.appendChild(interviewBadge);
+                
+                // Add YouTube video preview if available
+                if (hero.YouTubeLink || hero.Video) {
+                    const videoLink = hero.YouTubeLink || hero.Video;
+                    if (videoLink && videoLink.trim() !== '') {
+                        // Extract video ID from YouTube URL
+                        let videoId = '';
+                        const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+                        const match = videoLink.match(ytRegex);
+                        
+                        if (match && match[1]) {
+                            videoId = match[1];
+                            
+                            // Create video preview container
+                            const videoContainer = document.createElement('div');
+                            videoContainer.className = 'video-preview';
+                            videoContainer.style.marginTop = '1rem';
+                            videoContainer.style.position = 'relative';
+                            videoContainer.style.width = '100%';
+                            videoContainer.style.paddingBottom = '56.25%'; // 16:9 aspect ratio
+                            videoContainer.style.borderRadius = '8px';
+                            videoContainer.style.overflow = 'hidden';
+                            
+                            // Create thumbnail with play button overlay
+                            const thumbnail = document.createElement('div');
+                            thumbnail.style.position = 'absolute';
+                            thumbnail.style.top = '0';
+                            thumbnail.style.left = '0';
+                            thumbnail.style.width = '100%';
+                            thumbnail.style.height = '100%';
+                            thumbnail.style.backgroundImage = `url(https://img.youtube.com/vi/${videoId}/mqdefault.jpg)`;
+                            thumbnail.style.backgroundSize = 'cover';
+                            thumbnail.style.backgroundPosition = 'center';
+                            thumbnail.style.cursor = 'pointer';
+                            
+                            // Add play button overlay
+                            const playButton = document.createElement('div');
+                            playButton.style.position = 'absolute';
+                            playButton.style.top = '50%';
+                            playButton.style.left = '50%';
+                            playButton.style.transform = 'translate(-50%, -50%)';
+                            playButton.style.width = '60px';
+                            playButton.style.height = '60px';
+                            playButton.style.backgroundColor = 'rgba(255, 0, 0, 0.8)';
+                            playButton.style.borderRadius = '50%';
+                            playButton.style.display = 'flex';
+                            playButton.style.justifyContent = 'center';
+                            playButton.style.alignItems = 'center';
+                            
+                            const playIcon = document.createElement('i');
+                            playIcon.className = 'fas fa-play';
+                            playIcon.style.color = 'white';
+                            playIcon.style.fontSize = '24px';
+                            playIcon.style.marginLeft = '4px'; // Adjust for visual centering
+                            
+                            playButton.appendChild(playIcon);
+                            thumbnail.appendChild(playButton);
+                            
+                            // Add click event to open YouTube video
+                            thumbnail.addEventListener('click', () => {
+                                window.open(videoLink, '_blank');
+                            });
+                            
+                            videoContainer.appendChild(thumbnail);
+                            cardContent.appendChild(videoContainer);
+                        } else {
+                            // Fallback to simple link if video ID can't be extracted
+                            const linkContainer = document.createElement('div');
+                            linkContainer.className = 'youtube-link';
+                            linkContainer.innerHTML = `<a href="${videoLink}" target="_blank" rel="noopener">
+                                <i class="fab fa-youtube"></i> Watch Interview
+                            </a>`;
+                            cardContent.appendChild(linkContainer);
+                        }
                     }
-                });
-                pagination.appendChild(prevBtn);
-                
-                // Page buttons (show max 5 pages with ellipsis)
-                const maxVisiblePages = 5;
-                let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-                
-                if (endPage - startPage + 1 < maxVisiblePages) {
-                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
                 }
                 
-                if (startPage > 1) {
-                    const firstBtn = document.createElement('button');
-                    firstBtn.className = 'page-btn';
-                    firstBtn.textContent = '1';
-                    firstBtn.addEventListener('click', () => {
-                        currentPage = 1;
-                        renderHeroes();
-                    });
-                    pagination.appendChild(firstBtn);
-                    
-                    if (startPage > 2) {
-                        const ellipsis = document.createElement('span');
-                        ellipsis.textContent = '...';
-                        ellipsis.style.margin = '0 0.5rem';
-                        pagination.appendChild(ellipsis);
-                    }
-                }
-                
-                for (let i = startPage; i <= endPage; i++) {
-                    const pageBtn = document.createElement('button');
-                    pageBtn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
-                    pageBtn.textContent = i;
-                    pageBtn.addEventListener('click', () => {
-                        currentPage = i;
-                        renderHeroes();
-                    });
-                    pagination.appendChild(pageBtn);
-                }
-                
-                if (endPage < totalPages) {
-                    if (endPage < totalPages - 1) {
-                        const ellipsis = document.createElement('span');
-                        ellipsis.textContent = '...';
-                        ellipsis.style.margin = '0 0.5rem';
-                        pagination.appendChild(ellipsis);
-                    }
-                    
-                    const lastBtn = document.createElement('button');
-                    lastBtn.className = 'page-btn';
-                    lastBtn.textContent = totalPages;
-                    lastBtn.addEventListener('click', () => {
-                        currentPage = totalPages;
-                        renderHeroes();
-                    });
-                    pagination.appendChild(lastBtn);
-                }
-                
-                // Next button
-                const nextBtn = document.createElement('button');
-                nextBtn.className = 'page-btn';
-                nextBtn.textContent = '→';
-                nextBtn.disabled = currentPage === totalPages;
-                nextBtn.addEventListener('click', () => {
-                    if (currentPage < totalPages) {
-                        currentPage++;
-                        renderHeroes();
-                    }
-                });
-                pagination.appendChild(nextBtn);
+                // We don't need a separate interview details link since the badge now links to it
             }
             
-            // Search and filter functionality
-            const searchInput = document.getElementById('heroSearch');
-            searchInput.addEventListener('input', filterHeroes);
+            // Add card components to the card
+            card.appendChild(cardHeader);
+            card.appendChild(cardContent);
             
-            const filterButtons = document.querySelectorAll('.filter-btn');
-            filterButtons.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    // Remove active class and reset styles from all buttons
-                    filterButtons.forEach(b => {
-                        b.classList.remove('active');
-                        b.style.backgroundColor = '';
-                        b.style.color = '';
-                        b.style.borderColor = '';
-                    });
-                    
-                    // Add active class to clicked button
-                    this.classList.add('active');
-                    
-                    // Apply orange style directly to the active button
-                    this.style.backgroundColor = '#FF9900'; // AWS Orange
-                    this.style.color = 'white';
-                    this.style.borderColor = '#FF9900';
-                    
-                    filterHeroes();
-                });
-            });
-            
-            function filterHeroes() {
-                const searchTerm = searchInput.value.toLowerCase();
-                const activeFilter = document.querySelector('.filter-btn.active').getAttribute('data-filter');
-                
-                filteredHeroes = heroes.filter(hero => {
-                    // Search term filter
-                    const matchesSearch = 
-                        (hero.Name && hero.Name.toLowerCase().includes(searchTerm)) ||
-                        (hero.Location && hero.Location.toLowerCase().includes(searchTerm)) ||
-                        (hero.Category && hero.Category.toLowerCase().includes(searchTerm));
-                    
-                    // Category filter
-                    let matchesCategory = true;
-                    if (activeFilter !== 'all') {
-                        const category = hero.Category ? hero.Category.toLowerCase() : '';
-                        matchesCategory = category.includes(activeFilter);
-                    }
-                    
-                    return matchesSearch && matchesCategory;
-                });
-                
-                currentPage = 1;
-                updateStats(filteredHeroes);
+            // Add card to the heroes list
+            heroesList.appendChild(card);
+        });
+        
+        // Render pagination
+        renderPagination();
+    }
+    
+    // Function to render pagination
+    function renderPagination() {
+        const totalPages = Math.ceil(filteredHeroes.length / itemsPerPage);
+        const pagination = document.getElementById('pagination');
+        pagination.innerHTML = '';
+        
+        if (totalPages <= 1) {
+            return;
+        }
+        
+        // Previous button
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'page-btn';
+        prevBtn.textContent = '←';
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
                 renderHeroes();
             }
-            
-            // Initial render
-            updateStats(heroes);
-            renderHeroes();
-        })
-        .catch(error => {
-            console.error('Error loading AWS Heroes data:', error);
-            document.getElementById('heroesList').innerHTML = `<p>Error loading AWS Heroes data: ${error.message}</p>`;
         });
-});
+        pagination.appendChild(prevBtn);
+        
+        // Page buttons (show max 5 pages with ellipsis)
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+        
+        if (endPage - startPage + 1 < maxVisiblePages) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+        
+        if (startPage > 1) {
+            const firstBtn = document.createElement('button');
+            firstBtn.className = 'page-btn';
+            firstBtn.textContent = '1';
+            firstBtn.addEventListener('click', () => {
+                currentPage = 1;
+                renderHeroes();
+            });
+            pagination.appendChild(firstBtn);
+            
+            if (startPage > 2) {
+                const ellipsis = document.createElement('span');
+                ellipsis.textContent = '...';
+                ellipsis.style.margin = '0 0.5rem';
+                pagination.appendChild(ellipsis);
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const pageBtn = document.createElement('button');
+            pageBtn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+            pageBtn.textContent = i;
+            pageBtn.addEventListener('click', () => {
+                currentPage = i;
+                renderHeroes();
+            });
+            pagination.appendChild(pageBtn);
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                const ellipsis = document.createElement('span');
+                ellipsis.textContent = '...';
+                ellipsis.style.margin = '0 0.5rem';
+                pagination.appendChild(ellipsis);
+            }
+            
+            const lastBtn = document.createElement('button');
+            lastBtn.className = 'page-btn';
+            lastBtn.textContent = totalPages;
+            lastBtn.addEventListener('click', () => {
+                currentPage = totalPages;
+                renderHeroes();
+            });
+            pagination.appendChild(lastBtn);
+        }
+        
+        // Next button
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'page-btn';
+        nextBtn.textContent = '→';
+        nextBtn.disabled = currentPage === totalPages;
+        nextBtn.addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderHeroes();
+            }
+        });
+        pagination.appendChild(nextBtn);
+    }
+    
+    // Setup event handlers
+    function setupEventHandlers() {
+        // Search functionality
+        document.getElementById('heroSearch').addEventListener('input', function(e) {
+            filterHeroes();
+        });
+        
+        // Category filter buttons
+        document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn[data-filter]').forEach(b => {
+                    b.classList.remove('active');
+                    b.style.backgroundColor = '';
+                    b.style.color = '';
+                    b.style.borderColor = '';
+                });
+                
+                this.classList.add('active');
+                this.style.backgroundColor = '#FF9900';
+                this.style.color = 'white';
+                this.style.borderColor = '#FF9900';
+                
+                activeFilter = this.dataset.filter.toLowerCase();
+                filterHeroes();
+            });
+        });
+        
+        // Interview status filter buttons
+        document.querySelectorAll('.filter-btn[data-interview-filter]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn[data-interview-filter]').forEach(b => {
+                    b.classList.remove('active');
+                    b.style.backgroundColor = '';
+                    b.style.color = '';
+                    b.style.borderColor = '';
+                });
+                
+                this.classList.add('active');
+                this.style.backgroundColor = '#FF9900';
+                this.style.color = 'white';
+                this.style.borderColor = '#FF9900';
+                
+                activeInterviewFilter = this.dataset.interviewFilter.toLowerCase();
+                filterHeroes();
+            });
+        });
+    }
+    
+    // Filter heroes based on search term, category, and interview status
+    function filterHeroes() {
+        const searchTerm = document.getElementById('heroSearch').value.toLowerCase();
+        
+        filteredHeroes = heroes.filter(hero => {
+            // Search term filter
+            const matchesSearch = 
+                (hero.Name && hero.Name.toLowerCase().includes(searchTerm)) ||
+                (hero.Location && hero.Location.toLowerCase().includes(searchTerm)) ||
+                (hero.Category && hero.Category.toLowerCase().includes(searchTerm));
+            
+            // Category filter
+            let matchesCategory = true;
+            if (activeFilter !== 'all') {
+                const category = hero.Category ? hero.Category.toLowerCase() : '';
+                matchesCategory = category.includes(activeFilter);
+            }
+            
+            // Interview status filter
+            let matchesInterviewStatus = true;
+            if (activeInterviewFilter !== 'all') {
+                if (activeInterviewFilter === 'done') {
+                    matchesInterviewStatus = hero.InterviewStatus && hero.InterviewStatus.toLowerCase() === 'done';
+                } else if (activeInterviewFilter === 'next up') {
+                    matchesInterviewStatus = hero.InterviewStatus && hero.InterviewStatus.toLowerCase() === 'next up';
+                } else if (activeInterviewFilter === 'scheduled') {
+                    matchesInterviewStatus = hero.InterviewStatus && hero.InterviewStatus.toLowerCase() === 'scheduled';
+                } else if (activeInterviewFilter === 'in progress') {
+                    matchesInterviewStatus = hero.InterviewStatus && hero.InterviewStatus.toLowerCase() === 'in progress';
+                }
+            }
+            
+            return matchesSearch && matchesCategory && matchesInterviewStatus;
+        });
+        
+        currentPage = 1;
+        updateStats(filteredHeroes);
+        renderHeroes();
+    }
+    
+    // Create category chart
+    function createCategoryChart(heroes) {
+        // Count heroes by category
+        const categoryCounts = {};
+        heroes.forEach(hero => {
+            if (hero.Category) {
+                const categoryName = hero.Category.replace('AWS ', '').replace(' Hero', '');
+                categoryCounts[categoryName] = (categoryCounts[categoryName] || 0) + 1;
+            }
+        });
+        
+        // Convert to array and sort
+        const categoryData = Object.entries(categoryCounts)
+            .map(([category, count]) => ({ category, count }))
+            .sort((a, b) => b.count - a.count);
+        
+        // Create chart if we have data
+        if (categoryData.length > 0) {
+            try {
+                const width = document.querySelector('.chart-container').clientWidth;
+                const height = 400;
+                const margin = { top: 30, right: 30, bottom: 70, left: 60 };
+                const chartWidth = width - margin.left - margin.right;
+                const chartHeight = height - margin.top - margin.bottom;
+                
+                // Clear previous chart
+                d3.select('#categoryChart').html('');
+                
+                // Create SVG
+                const svg = d3.select('#categoryChart')
+                    .attr('width', width)
+                    .attr('height', height)
+                    .append('g')
+                    .attr('transform', `translate(${margin.left},${margin.top})`);
+                
+                // X axis
+                const x = d3.scaleBand()
+                    .range([0, chartWidth])
+                    .domain(categoryData.map(d => d.category))
+                    .padding(0.2);
+                
+                svg.append('g')
+                    .attr('transform', `translate(0,${chartHeight})`)
+                    .call(d3.axisBottom(x))
+                    .selectAll('text')
+                    .attr('transform', 'translate(-10,0)rotate(-45)')
+                    .style('text-anchor', 'end');
+                
+                // Y axis
+                const y = d3.scaleLinear()
+                    .domain([0, d3.max(categoryData, d => d.count) * 1.1])
+                    .range([chartHeight, 0]);
+                
+                svg.append('g')
+                    .call(d3.axisLeft(y));
+                
+                // Bars
+                svg.selectAll('mybar')
+                    .data(categoryData)
+                    .enter()
+                    .append('rect')
+                    .attr('x', d => x(d.category))
+                    .attr('y', d => y(d.count))
+                    .attr('width', x.bandwidth())
+                    .attr('height', d => chartHeight - y(d.count))
+                    .attr('fill', '#FF9900');
+                
+                // Add labels
+                svg.selectAll('mylabels')
+                    .data(categoryData)
+                    .enter()
+                    .append('text')
+                    .attr('x', d => x(d.category) + x.bandwidth() / 2)
+                    .attr('y', d => y(d.count) - 5)
+                    .attr('text-anchor', 'middle')
+                    .text(d => d.count);
+            } catch (e) {
+                console.error('Error creating chart:', e);
+                document.querySelector('.chart-container').innerHTML = '<p>Chart loading error. Please refresh the page.</p>';
+            }
+        } else {
+            document.querySelector('.chart-container').innerHTML = '<p>No category data available for the current selection.</p>';
+        }
+    }
+}
 </script>
+
+<style>
+.interview-badge {
+    margin-top: 1rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: center;
+}
+
+.interview-done {
+    background-color: #28a745;
+    color: white;
+    border: 1px solid #1e7e34;
+}
+
+.interview-scheduled {
+    background-color: #ffc107;
+    color: #212529;
+    border: 1px solid #d39e00;
+}
+
+.interview-in-progress {
+    background-color: #17a2b8;
+    color: white;
+    border: 1px solid #138496;
+}
+
+.interview-other {
+    background-color: #6c757d;
+    color: white;
+    border: 1px solid #545b62;
+}
+
+.youtube-link, .interview-details {
+    margin-top: 0.5rem;
+}
+
+.youtube-link a {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background-color: #ff0000;
+    color: white;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.interview-details a {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background-color: #0073bb;
+    color: white;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.youtube-link a:hover, .interview-details a:hover {
+    opacity: 0.9;
+    text-decoration: none;
+}
+
+.interview-filters {
+    margin-top: 0.5rem;
+}
+</style>
 {{ end }}

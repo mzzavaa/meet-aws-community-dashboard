@@ -1,0 +1,324 @@
+{{ define "main" }}
+<div class="interview-page">
+    <h1>{{ .Title }}</h1>
+    
+    <div class="interview-meta">
+        <div class="interview-roles">
+            {{ range .Params.roles }}
+            <span class="role-badge">{{ . }}</span>
+            {{ end }}
+        </div>
+        
+        {{ if .Params.youtube }}
+        <div class="interview-video">
+            <div class="video-container">
+                <iframe 
+                    width="100%" 
+                    height="400" 
+                    src="https://www.youtube.com/embed/{{ .Params.youtube }}" 
+                    title="Interview with {{ .Params.name }}" 
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+                </iframe>
+            </div>
+        </div>
+        {{ end }}
+        
+        <div class="interview-social">
+            {{ if .Params.social.website }}
+            <a href="https://{{ .Params.social.website }}" target="_blank" rel="noopener" class="social-link">
+                <i class="fas fa-globe"></i> Website
+            </a>
+            {{ end }}
+            
+            {{ if .Params.social.linkedin }}
+            <a href="{{ .Params.social.linkedin }}" target="_blank" rel="noopener" class="social-link">
+                <i class="fab fa-linkedin"></i> LinkedIn
+            </a>
+            {{ end }}
+            
+            {{ if .Params.social.twitter }}
+            <a href="https://twitter.com/{{ .Params.social.twitter }}" target="_blank" rel="noopener" class="social-link">
+                <i class="fab fa-twitter"></i> Twitter
+            </a>
+            {{ end }}
+            
+            {{ if .Params.social.github }}
+            <a href="{{ .Params.social.github }}" target="_blank" rel="noopener" class="social-link">
+                <i class="fab fa-github"></i> GitHub
+            </a>
+            {{ end }}
+        </div>
+    </div>
+    
+    <div class="interview-content">
+        {{ .Content }}
+    </div>
+    
+    <div class="interview-questions">
+        <h2>Interview Questions</h2>
+        <div class="accordion">
+            <div class="accordion-item">
+                <div class="accordion-header">When did you start your tech career?</div>
+                <div class="accordion-content">
+                    <p>{{ .Params.questions.career_start }}</p>
+                </div>
+            </div>
+            
+            <div class="accordion-item">
+                <div class="accordion-header">What are your community activities and what makes you special in the community?</div>
+                <div class="accordion-content">
+                    <p>{{ .Params.questions.community_activities }}</p>
+                </div>
+            </div>
+            
+            <div class="accordion-item">
+                <div class="accordion-header">What was your first tech project and/or AWS project?</div>
+                <div class="accordion-content">
+                    <p>{{ .Params.questions.first_project }}</p>
+                </div>
+            </div>
+            
+            <div class="accordion-item">
+                <div class="accordion-header">What was your first touchpoint with the AWS community?</div>
+                <div class="accordion-content">
+                    <p>{{ .Params.questions.community_touchpoint }}</p>
+                </div>
+            </div>
+            
+            <div class="accordion-item">
+                <div class="accordion-header">What was your favorite project in your tech career?</div>
+                <div class="accordion-content">
+                    <p>{{ .Params.questions.favorite_project }}</p>
+                </div>
+            </div>
+            
+            <div class="accordion-item">
+                <div class="accordion-header">What would you tell your younger self before starting your tech career?</div>
+                <div class="accordion-content">
+                    <p>{{ .Params.questions.advice }}</p>
+                </div>
+            </div>
+            
+            <div class="accordion-item">
+                <div class="accordion-header">Do you have any online presence and who would be your target audience?</div>
+                <div class="accordion-content">
+                    <p>{{ .Params.questions.online_presence }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="interview-navigation">
+        {{ with .PrevInSection }}
+        <a href="{{ .Permalink }}" class="prev-interview">
+            <i class="fas fa-arrow-left"></i> Previous Interview: {{ .Title }}
+        </a>
+        {{ end }}
+        
+        {{ with .NextInSection }}
+        <a href="{{ .Permalink }}" class="next-interview">
+            Next Interview: {{ .Title }} <i class="fas fa-arrow-right"></i>
+        </a>
+        {{ end }}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Accordion functionality
+    const accordionHeaders = document.querySelectorAll('.accordion-header');
+    
+    accordionHeaders.forEach(header => {
+        header.addEventListener('click', function() {
+            this.classList.toggle('active');
+            const content = this.nextElementSibling;
+            
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+            } else {
+                content.style.maxHeight = content.scrollHeight + 'px';
+            }
+        });
+    });
+});
+</script>
+
+<style>
+.interview-page {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.interview-meta {
+    margin: 2rem 0;
+}
+
+.interview-roles {
+    margin-bottom: 1rem;
+}
+
+.role-badge {
+    display: inline-block;
+    background-color: var(--aws-orange);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.video-container {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.video-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.interview-social {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.social-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #333;
+    transition: all 0.3s ease;
+}
+
+.social-link:hover {
+    background-color: var(--aws-orange);
+    color: white;
+    text-decoration: none;
+}
+
+.social-link i {
+    margin-right: 0.5rem;
+}
+
+.interview-content {
+    margin-bottom: 3rem;
+    line-height: 1.8;
+}
+
+.interview-questions {
+    margin-bottom: 3rem;
+}
+
+.accordion {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.accordion-item {
+    border-bottom: 1px solid #ddd;
+}
+
+.accordion-item:last-child {
+    border-bottom: none;
+}
+
+.accordion-header {
+    padding: 1rem;
+    background-color: #f9f9f9;
+    cursor: pointer;
+    font-weight: 600;
+    position: relative;
+    transition: background-color 0.3s ease;
+}
+
+.accordion-header:hover {
+    background-color: #f0f0f0;
+}
+
+.accordion-header::after {
+    content: '\f078';
+    font-family: 'Font Awesome 5 Free';
+    position: absolute;
+    right: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.accordion-header.active::after {
+    transform: rotate(180deg);
+}
+
+.accordion-content {
+    padding: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.accordion-content p {
+    padding: 1rem;
+    margin: 0;
+}
+
+.interview-navigation {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid #ddd;
+}
+
+.prev-interview, .next-interview {
+    padding: 0.5rem 1rem;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #333;
+    transition: all 0.3s ease;
+}
+
+.prev-interview:hover, .next-interview:hover {
+    background-color: var(--aws-orange);
+    color: white;
+    text-decoration: none;
+}
+
+/* Dark mode styles */
+body.dark-mode .social-link {
+    background-color: var(--dark-surface-lighter);
+    color: var(--dark-text);
+}
+
+body.dark-mode .accordion-header {
+    background-color: var(--dark-surface);
+}
+
+body.dark-mode .accordion-header:hover {
+    background-color: var(--dark-surface-lighter);
+}
+
+body.dark-mode .accordion-content {
+    background-color: var(--dark-surface);
+}
+
+body.dark-mode .prev-interview, 
+body.dark-mode .next-interview {
+    background-color: var(--dark-surface-lighter);
+    color: var(--dark-text);
+}
+</style>
+{{ end }}

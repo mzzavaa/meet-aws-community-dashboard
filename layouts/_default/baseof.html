@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ "css/filter-buttons.css" | relURL }}">
+    <link rel="stylesheet" href="{{ "css/interview-badges.css" | relURL }}">
     <style>
         :root {
             --aws-orange: #FF9900;
@@ -100,12 +101,18 @@
             transition: background-color 0.3s;
         }
         
-        nav a:hover, nav a.active {
+        nav a:hover {
             background-color: rgba(255, 255, 255, 0.1);
         }
         
+        nav a.active {
+            background-color: var(--aws-orange);
+            color: white;
+            font-weight: bold;
+        }
+        
         main {
-            max-width: 1200px;
+            max-width: 1500px;
             margin: 0 auto;
             padding: 2rem;
             background-color: white;
@@ -433,9 +440,10 @@
         <nav>
             <ul>
                 <li><a href="{{ .Site.BaseURL }}" class="{{ if .IsHome }}active{{ end }}">Home</a></li>
-                <li><a href="{{ "user-groups" | relURL }}" class="{{ if eq .RelPermalink "/user-groups/" }}active{{ end }}">User Groups</a></li>
-                <li><a href="{{ "community-builders" | relURL }}" class="{{ if eq .RelPermalink "/community-builders/" }}active{{ end }}">Community Builders</a></li>
-                <li><a href="{{ "heroes" | relURL }}" class="{{ if eq .RelPermalink "/heroes/" }}active{{ end }}">Heroes</a></li>
+                <li><a href="{{ .Site.BaseURL }}user-groups/" class="{{ if eq .RelPermalink "/user-groups/" }}active{{ end }}">User Groups</a></li>
+                <li><a href="{{ .Site.BaseURL }}community-builders/" class="{{ if eq .RelPermalink "/community-builders/" }}active{{ end }}">Community Builders</a></li>
+                <li><a href="{{ .Site.BaseURL }}heroes/" class="{{ if eq .RelPermalink "/heroes/" }}active{{ end }}">Heroes</a></li>
+                <li><a href="{{ .Site.BaseURL }}interviews/" class="{{ if or (eq .RelPermalink "/interviews/") (in .RelPermalink "/interviews/") }}active{{ end }}" style="background-color: var(--aws-purple); color: white;">Interviews</a></li>
             </ul>
         </nav>
     </header>
@@ -489,5 +497,8 @@
     
     <!-- Custom JavaScript -->
     <script src="{{ "js/filter-buttons.js" | relURL }}"></script>
+    <!-- Disabled interview-status.js as functionality is now integrated in heroes.html -->
+    <!-- <script src="{{ "js/interview-status.js" | relURL }}"></script> -->
+    <script src="{{ "js/debug-card-structure.js" | relURL }}"></script>
 </body>
 </html>

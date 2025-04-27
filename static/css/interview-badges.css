@@ -1,0 +1,145 @@
+/**
+ * Interview Badge Styles
+ * Styling for interview status badges on hero and community builder cards
+ */
+
+/* Base badge styles */
+.interview-badge {
+    margin-top: 1rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+/* Status-specific styles */
+.interview-done {
+    background-color: #28a745;
+    color: white;
+    border: 1px solid #1e7e34;
+}
+
+.interview-scheduled {
+    background-color: #ffc107;
+    color: #212529;
+    border: 1px solid #d39e00;
+}
+
+.interview-in-progress {
+    background-color: #17a2b8;
+    color: white;
+    border: 1px solid #138496;
+}
+
+.interview-other {
+    background-color: #6c757d;
+    color: white;
+    border: 1px solid #545b62;
+}
+
+/* YouTube link styles */
+.youtube-link {
+    margin-top: 0.5rem;
+}
+
+.youtube-link a {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background-color: #ff0000;
+    color: white;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.youtube-link a:hover {
+    background-color: #cc0000;
+    text-decoration: none;
+}
+
+/* Video preview styles */
+.video-preview {
+    margin-top: 1rem;
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: transform 0.3s ease;
+}
+
+.video-preview:hover {
+    transform: scale(1.02);
+}
+
+.video-preview .play-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    background-color: rgba(255, 0, 0, 0.8);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.3s ease;
+}
+
+.video-preview:hover .play-button {
+    background-color: rgba(255, 0, 0, 1);
+}
+
+.video-preview .play-button i {
+    color: white;
+    font-size: 24px;
+    margin-left: 4px; /* Adjust for visual centering */
+}
+
+/* Interview details link styles */
+.interview-details {
+    margin-top: 0.5rem;
+}
+
+.interview-details a {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background-color: #0073bb;
+    color: white;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.interview-details a:hover {
+    background-color: #005a8e;
+    text-decoration: none;
+}
+
+.youtube-link i, .interview-details i {
+    margin-right: 0.25rem;
+}
+
+/* Interview filters */
+.interview-filters {
+    margin-top: 0.5rem;
+}
+
+/* Dark mode styles */
+body.dark-mode .interview-scheduled {
+    color: #000;
+}
+
+body.dark-mode .youtube-link a:hover {
+    background-color: #cc0000;
+}
+
+body.dark-mode .interview-details a:hover {
+    background-color: #005a8e;
+}
