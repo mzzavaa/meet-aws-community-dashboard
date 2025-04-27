@@ -1,0 +1,113 @@
+{
+  "heroes": [
+    {
+      "name": "Chris Williams",
+      "location": "Portsmouth, NH",
+      "category": "AWS Community Hero",
+      "bioUrl": "https://aws.amazon.com/developer/community/heroes/chris-williams/",
+      "sinceDate": "Hero since 2020",
+      "description": "Developer Relations Manager at HashiCorp, AWS User Group Leader. Known as a 'human router' in the AWS community, connecting people with the right expertise.",
+      "imageUrl": "https://d1.awsstatic.com/Developer%20Marketing/developer-center/chris-williams-100.jpg",
+      "tags": "AWS Community Hero|Meetup Organizer|Conference Speaker|Blogger",
+      "interviewSlug": "chris-williams",
+      "youtubeId": "eHwJg7XEoDk",
+      "status": "published",
+      "social": {
+        "website": "mistwire.com",
+        "linkedin": "https://linkedin.com/in/chris-williams",
+        "twitter": "@mistwire",
+        "github": "https://github.com/mistwire"
+      }
+    },
+    {
+      "name": "Ahmed Bebars",
+      "location": "New Jersey, United States",
+      "category": "AWS Container Hero",
+      "bioUrl": "https://aws.amazon.com/developer/community/heroes/ahmed-bebars/?did=dh_card&trk=dh_card",
+      "sinceDate": "Hero since 2025",
+      "description": "Ahmed is a Principal Engineer at The New York Times, where he leads the design and delivery,...",
+      "imageUrl": "https://d1.awsstatic.com/getting-started-guides/hero-images-2025/ahmed-bebars-100.d1eb6693748ab716d70f376ac93c2cdda7187445.png",
+      "tags": "2025|Meetup Organizer|new|namer|3000|2025|New|Trainer / Educator|Open Source Contributor|3000|North America|Blogger|Conference Speaker|AWS Container Hero",
+      "latitude": 40.0757384,
+      "longitude": -74.4041622,
+      "status": "Next up"
+    },
+    {
+      "name": "Badri Narayanan Kesavan",
+      "location": "Singapore",
+      "category": "AWS Community Hero",
+      "bioUrl": "https://aws.amazon.com/developer/community/heroes/badri-kesavan/?did=dh_card&trk=dh_card",
+      "sinceDate": "Hero since 2025",
+      "description": "Badri is an Engineering Lead and Solutions Architect with over a decade of professional experience,...",
+      "imageUrl": "https://d1.awsstatic.com/getting-started-guides/hero-images-2025/Badri%20Narayanan%20Kesavan-100.31ef5982037cd5ada858bf1387b82724bf12a73f.png",
+      "tags": "Meetup Organizer|apac|3000|new|AWS Community Hero|Conference Speaker|Singapore|Asia Pacific|2025|New|2025|3000",
+      "latitude": 1.357107,
+      "longitude": 103.8194992
+    }
+  ],
+  "communityBuilders": [
+    {
+      "name": "A.T.M Ruhul Amin",
+      "location": "Dhaka, Bangladesh",
+      "category": "Front-End Web & Mobile Builder since 2023",
+      "bioUrl": "https://www.linkedin.com/in/atmruhulamin",
+      "latitude": 23.8202931,
+      "longitude": 90.3710408
+    },
+    {
+      "name": "Aarfah Ahmad",
+      "location": "India",
+      "category": "Serverless Builder since 2023",
+      "bioUrl": "No URL",
+      "latitude": 22.3511148,
+      "longitude": 78.6677428
+    },
+    {
+      "name": "Aaron Lieberman",
+      "location": "Denver, USA",
+      "category": "Serverless Builder since 2021",
+      "bioUrl": "https://www.linkedin.com/in/aaron-lieberman-8a89bb46/",
+      "latitude": 39.7392364,
+      "longitude": -104.984862
+    }
+  ],
+  "userGroups": [
+    {
+      "name": "AWS Portsmouth User Group",
+      "location": "Portsmouth, NH",
+      "url": "https://www.meetup.com/aws-portsmouth/",
+      "category": "General AWS User Groups",
+      "organizer": "Chris Williams"
+    },
+    {
+      "name": "AWS Timisoara",
+      "location": "Timisoara, Romania",
+      "url": "https://www.meetup.com/aws-timisoara",
+      "category": "General AWS User Groups"
+    },
+    {
+      "name": "IASI AWS User Group",
+      "location": "Iasi, Romania",
+      "url": "https://www.meetup.com/aws-ro/",
+      "category": "General AWS User Groups"
+    }
+  ],
+  "interviews": [
+    {
+      "title": "Meet AWS Hero Chris Williams: From Pre-Med to Cloud Architecture",
+      "name": "Chris Williams",
+      "roles": ["AWS Hero", "User Group Leader"],
+      "date": "2023-04-15",
+      "youtube": "eHwJg7XEoDk",
+      "slug": "chris-williams",
+      "status": "published",
+      "featured": true,
+      "questions": {
+        "career_start": "I started in tech unexpectedly during college. While studying pre-med, I set up a network for playing Doom with my roommates, which led to me being hired to wire the university's CS department.",
+        "community_activities": "I run the AWS Portsmouth user group and host a technology podcast. I'm known as a 'human router' in the AWS community, connecting people with the right expertise.",
+        "first_project": "My first significant AWS project involved helping a printing software company streamline their deployment process. Using CloudFormation, I reduced their implementation timeline from six months to just 29 minutes.",
+        "favorite_project": "Helping a printing software company reduce their deployment time from 6 months to 29 minutes using CloudFormation. That transformation convinced me of cloud computing's game-changing potential."
+      }
+    }
+  ]
+}

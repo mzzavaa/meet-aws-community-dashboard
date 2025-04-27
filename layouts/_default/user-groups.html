@@ -1,7 +1,8 @@
 {{ define "main" }}
-{{ $userGroupsCSV := "data/aws_user_groups_complete.csv" | absURL }}
+{{ $userGroupsCSV := "data/aws_user_groups_cleaned_with_coordinates.csv" | absURL }}
 
-<div id="map" style="max-height: 350px; width: 100%"></div>
+<link rel="stylesheet" href="{{ "css/community-components.css" | absURL }}">
+<link rel="stylesheet" href="{{ "css/map-markers.css" | absURL }}">
 
 <div class="content">
     <h1>{{ .Title }}</h1>
@@ -9,47 +10,51 @@
     
     {{ .Content }}
     
-    <div class="search-container">
-        <input type="text" id="groupSearch" class="search-input" placeholder="Search user groups by name or location...">
-        <div class="filters">
-            <button class="filter-btn active" data-filter="all">All</button>
-            <button class="filter-btn" data-filter="americas">Americas</button>
-            <button class="filter-btn" data-filter="emea">EMEA</button>
-            <button class="filter-btn" data-filter="apac">APAC</button>
-        </div>
-    </div>
+    <div id="map" style="height: 500px; width: 100%; border-radius: 8px; margin: 2rem 0;"></div>
     
     <div class="stats">
         <div class="stat-card">
-            <div class="stat-number" id="totalGroups">0</div>
+            <div class="stat-logo user-group-logo"></div>
+            <div class="stat-number" id="totalUserGroups">0</div>
             <div class="stat-label">User Groups</div>
         </div>
         <div class="stat-card">
             <div class="stat-number" id="totalCountries">0</div>
             <div class="stat-label">Countries</div>
         </div>
+        <div class="stat-card">
+            <div class="stat-number" id="totalRegions">0</div>
+            <div class="stat-label">AWS Regions</div>
+        </div>
     </div>
     
-
+    <div class="search-container">
+        <input type="text" id="userGroupSearch" class="search-input" placeholder="Search AWS User Groups by name, location, or region...">
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">All Regions</button>
+            <button class="filter-btn" data-filter="North America">North America</button>
+            <button class="filter-btn" data-filter="Europe">Europe</button>
+            <button class="filter-btn" data-filter="Asia">Asia</button>
+            <button class="filter-btn" data-filter="South America">South America</button>
+            <button class="filter-btn" data-filter="Africa">Africa</button>
+            <button class="filter-btn" data-filter="Australia">Australia</button>
+        </div>
+    </div>
     
-    <h2>All User Groups</h2>
+    <h2>All AWS User Groups</h2>
     <div id="userGroupsList" class="grid">
-        <!-- User groups will be populated here -->
-        <div class="loading">Loading user groups data...</div>
+        <!-- User Groups will be populated here -->
+        <div class="loading">Loading AWS User Groups data...</div>
     </div>
     
     <div class="pagination" id="pagination">
         <!-- Pagination will be populated here -->
     </div>
-    
-    <div class="chart-container">
-        <h2>User Groups by Region</h2>
-        <svg id="regionChart" width="100%" height="100%"></svg>
-    </div>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('User Groups page loaded, initializing...');
+    console.log('AWS User Groups page loaded, initializing...');
     
     // Initialize the map
     const map = L.map('map').setView([20, 0], 2);
@@ -57,64 +62,9 @@ document.addEventListener('DOMContentLoaded', function() {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
     
-    // Function to parse CSV
-    function parseCSV(text) {
-        try {
-            const lines = text.split('\n');
-            const headers = lines[0].split(',').map(h => h.trim());
-            
-            return lines.slice(1)
-                .filter(line => line.trim())
-                .map(line => {
-                    // Handle commas within quoted fields
-                    const values = [];
-                    let inQuotes = false;
-                    let currentValue = '';
-                    
-                    for (let i = 0; i < line.length; i++) {
-                        const char = line[i];
-                        
-                        if (char === '"') {
-                            inQuotes = !inQuotes;
-                        } else if (char === ',' && !inQuotes) {
-                            values.push(currentValue);
-                            currentValue = '';
-                        } else {
-                            currentValue += char;
-                        }
-                    }
-                    
-                    values.push(currentValue);
-                    
-                    // Create object from headers and values
-                    const entry = {};
-                    headers.forEach((header, i) => {
-                        entry[header] = values[i] ? values[i].replace(/^"(.*)"$/, '$1') : '';
-                    });
-                    
-                    return entry;
-                });
-        } catch (e) {
-            console.error('CSV parsing error:', e);
-            return [];
-        }
-    }
-    
-    // Function to get coordinates for a location
-    function getCoordinates(locationStr) {
-        if (!locationStr) return [0, 0];
-        
-        // Simple hash-based coordinate generation for demo
-        const hash = locationStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const lat = (hash % 140) - 70; // Range from -70 to 70
-        const lng = (hash * 31 % 320) - 160; // Range from -160 to 160
-        
-        return [lat, lng];
-    }
-    
-    // Use absolute URL for data file in Hugo
+    // Use the CSV URL from Hugo
     const userGroupsUrl = "{{ $userGroupsCSV }}";
-    console.log("Loading user groups from:", userGroupsUrl);
+    console.log("Loading AWS User Groups from:", userGroupsUrl);
     
     // Load user groups data
     fetch(userGroupsUrl)
@@ -126,362 +76,401 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(text => {
             // Parse CSV
-            const userGroups = parseCSV(text);
-            console.log(`Loaded ${userGroups.length} user groups`);
+            const userGroups = parseUserGroupsCSV(text);
+            console.log(`Loaded ${userGroups.length} AWS User Groups`);
             
-            if (userGroups.length === 0) {
-                throw new Error('No user groups data available');
-            }
-            
-            // Update stats
-            document.getElementById('totalGroups').textContent = userGroups.length;
-            
-            // Count unique countries
-            const countries = new Set();
-            userGroups.forEach(group => {
-                if (group.Location) {
-                    const country = group.Location.split(',').pop().trim();
-                    if (country) countries.add(country);
-                }
-            });
-            document.getElementById('totalCountries').textContent = countries.size;
-            
-            // Add markers for each user group
-            userGroups.forEach(group => {
-                if (!group.Location) return;
-                
-                const coords = getCoordinates(group.Location);
-                const marker = L.circleMarker(coords, {
-                    radius: 8,
-                    fillColor: '#8C4799', // AWS Purple
-                    color: '#fff',
-                    weight: 1,
-                    opacity: 1,
-                    fillOpacity: 0.8
-                }).addTo(map);
-                
-                marker.bindPopup(`
-                    <div class="map-popup">
-                        <h3>${group.Name}</h3>
-                        <p><strong>Location:</strong> ${group.Location}</p>
-                        <p><strong>Category:</strong> ${group.Category || 'General AWS User Group'}</p>
-                        <p><a href="${group.URL}" target="_blank">Visit Group</a></p>
-                    </div>
-                `);
-            });
-            
-            // Create region chart
-            const regions = {
-                'Americas': 0,
-                'EMEA': 0,
-                'APAC': 0
-            };
-            
-            // Simplified region assignment based on country name
-            userGroups.forEach(group => {
-                if (!group.Location) return;
-                
-                const location = group.Location;
-                const country = location.split(',').pop().trim();
-                
-                // Very simplified region assignment
-                if (['USA', 'Canada', 'Mexico', 'Brazil', 'Argentina', 'United States'].some(c => country.includes(c))) {
-                    regions.Americas++;
-                } else if (['UK', 'Germany', 'France', 'Spain', 'Italy', 'Romania', 'Europe'].some(c => country.includes(c))) {
-                    regions.EMEA++;
-                } else {
-                    regions.APAC++;
-                }
-            });
-            
-            // Create bar chart if D3 is available
-            if (typeof d3 !== 'undefined') {
-                try {
-                    const svg = d3.select('#regionChart');
-                    const width = parseInt(svg.style('width')) || 600;
-                    const height = parseInt(svg.style('height')) || 400;
-                    const margin = {top: 20, right: 30, bottom: 40, left: 40};
-                    const chartWidth = width - margin.left - margin.right;
-                    const chartHeight = height - margin.top - margin.bottom;
-                    
-                    const chart = svg.append('g')
-                        .attr('transform', `translate(${margin.left},${margin.top})`);
-                        
-                    const x = d3.scaleBand()
-                        .domain(Object.keys(regions))
-                        .range([0, chartWidth])
-                        .padding(0.1);
-                        
-                    const y = d3.scaleLinear()
-                        .domain([0, d3.max(Object.values(regions))])
-                        .nice()
-                        .range([chartHeight, 0]);
-                        
-                    // Add bars
-                    chart.selectAll('.bar')
-                        .data(Object.entries(regions))
-                        .enter()
-                        .append('rect')
-                        .attr('class', 'bar')
-                        .attr('x', d => x(d[0]))
-                        .attr('y', d => y(d[1]))
-                        .attr('width', x.bandwidth())
-                        .attr('height', d => chartHeight - y(d[1]))
-                        .attr('fill', '#8C4799'); // AWS Purple
-                        
-                    // Add x-axis
-                    chart.append('g')
-                        .attr('transform', `translate(0,${chartHeight})`)
-                        .call(d3.axisBottom(x));
-                        
-                    // Add y-axis
-                    chart.append('g')
-                        .call(d3.axisLeft(y));
-                        
-                    // Add labels
-                    chart.selectAll('.label')
-                        .data(Object.entries(regions))
-                        .enter()
-                        .append('text')
-                        .attr('class', 'label')
-                        .attr('x', d => x(d[0]) + x.bandwidth() / 2)
-                        .attr('y', d => y(d[1]) - 5)
-                        .attr('text-anchor', 'middle')
-                        .text(d => d[1]);
-                } catch (e) {
-                    console.error('Error creating chart:', e);
-                    document.querySelector('.chart-container').innerHTML = '<p>Chart loading error. Please refresh the page.</p>';
-                }
-            }
-            
-            // Display user groups
-            const itemsPerPage = 12;
-            let currentPage = 1;
-            let filteredGroups = [...userGroups];
-            
-            function renderGroups() {
-                const startIndex = (currentPage - 1) * itemsPerPage;
-                const endIndex = startIndex + itemsPerPage;
-                const groupsToShow = filteredGroups.slice(startIndex, endIndex);
-                
-                const container = document.getElementById('userGroupsList');
-                container.innerHTML = '';
-                
-                if (groupsToShow.length === 0) {
-                    container.innerHTML = '<p>No user groups match your search criteria.</p>';
-                    return;
-                }
-                
-                groupsToShow.forEach(group => {
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    card.innerHTML = `
-                        <h3>${group.Name || 'Unknown Group'}</h3>
-                        <p><strong>Location:</strong> ${group.Location || 'Unknown Location'}</p>
-                        <p><strong>Category:</strong> ${group.Category || 'General AWS User Group'}</p>
-                        <p><a href="${group.URL || '#'}" target="_blank">Visit Group</a></p>
-                    `;
-                    container.appendChild(card);
-                });
-                
-                renderPagination();
-            }
-            
-            function renderPagination() {
-                const totalPages = Math.ceil(filteredGroups.length / itemsPerPage);
-                const pagination = document.getElementById('pagination');
-                pagination.innerHTML = '';
-                
-                if (totalPages <= 1) {
-                    return;
-                }
-                
-                // Previous button
-                const prevBtn = document.createElement('button');
-                prevBtn.className = 'page-btn';
-                prevBtn.textContent = '←';
-                prevBtn.disabled = currentPage === 1;
-                prevBtn.addEventListener('click', () => {
-                    if (currentPage > 1) {
-                        currentPage--;
-                        renderGroups();
-                    }
-                });
-                pagination.appendChild(prevBtn);
-                
-                // Page buttons (show max 5 pages with ellipsis)
-                const maxVisiblePages = 5;
-                let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-                
-                if (endPage - startPage + 1 < maxVisiblePages) {
-                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
-                }
-                
-                if (startPage > 1) {
-                    const firstBtn = document.createElement('button');
-                    firstBtn.className = 'page-btn';
-                    firstBtn.textContent = '1';
-                    firstBtn.addEventListener('click', () => {
-                        currentPage = 1;
-                        renderGroups();
-                    });
-                    pagination.appendChild(firstBtn);
-                    
-                    if (startPage > 2) {
-                        const ellipsis = document.createElement('span');
-                        ellipsis.textContent = '...';
-                        ellipsis.style.margin = '0 0.5rem';
-                        pagination.appendChild(ellipsis);
-                    }
-                }
-                
-                for (let i = startPage; i <= endPage; i++) {
-                    const pageBtn = document.createElement('button');
-                    pageBtn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
-                    pageBtn.textContent = i;
-                    pageBtn.addEventListener('click', () => {
-                        currentPage = i;
-                        renderGroups();
-                    });
-                    pagination.appendChild(pageBtn);
-                }
-                
-                if (endPage < totalPages) {
-                    if (endPage < totalPages - 1) {
-                        const ellipsis = document.createElement('span');
-                        ellipsis.textContent = '...';
-                        ellipsis.style.margin = '0 0.5rem';
-                        pagination.appendChild(ellipsis);
-                    }
-                    
-                    const lastBtn = document.createElement('button');
-                    lastBtn.className = 'page-btn';
-                    lastBtn.textContent = totalPages;
-                    lastBtn.addEventListener('click', () => {
-                        currentPage = totalPages;
-                        renderGroups();
-                    });
-                    pagination.appendChild(lastBtn);
-                }
-                
-                // Next button
-                const nextBtn = document.createElement('button');
-                nextBtn.className = 'page-btn';
-                nextBtn.textContent = '→';
-                nextBtn.disabled = currentPage === totalPages;
-                nextBtn.addEventListener('click', () => {
-                    if (currentPage < totalPages) {
-                        currentPage++;
-                        renderGroups();
-                    }
-                });
-                pagination.appendChild(nextBtn);
-            }
-            
-            // Search functionality
-            document.getElementById('groupSearch').addEventListener('input', function(e) {
-                const searchTerm = e.target.value.toLowerCase();
-                filteredGroups = userGroups.filter(group => 
-                    (group.Name && group.Name.toLowerCase().includes(searchTerm)) || 
-                    (group.Location && group.Location.toLowerCase().includes(searchTerm))
-                );
-                currentPage = 1;
-                renderGroups();
-            });
-            
-            // Filter buttons
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    // Remove active class and reset styles from all buttons
-                    document.querySelectorAll('.filter-btn').forEach(b => {
-                        b.classList.remove('active');
-                        b.style.backgroundColor = '';
-                        b.style.color = '';
-                        b.style.borderColor = '';
-                    });
-                    
-                    // Add active class to clicked button
-                    this.classList.add('active');
-                    
-                    // Apply orange style directly to the active button
-                    this.style.backgroundColor = '#FF9900'; // AWS Orange
-                    this.style.color = 'white';
-                    this.style.borderColor = '#FF9900';
-                    
-                    const filter = this.dataset.filter;
-                    
-                    if (filter === 'all') {
-                        filteredGroups = [...userGroups];
-                    } else if (filter === 'americas') {
-                        filteredGroups = userGroups.filter(group => {
-                            if (!group.Location) return false;
-                            const country = group.Location.split(',').pop().trim();
-                            return ['USA', 'Canada', 'Mexico', 'Brazil', 'Argentina', 'United States'].some(c => country.includes(c));
-                        });
-                    } else if (filter === 'emea') {
-                        filteredGroups = userGroups.filter(group => {
-                            if (!group.Location) return false;
-                            const country = group.Location.split(',').pop().trim();
-                            return ['UK', 'Germany', 'France', 'Spain', 'Italy', 'Romania', 'Europe'].some(c => country.includes(c));
-                        });
-                    } else if (filter === 'apac') {
-                        filteredGroups = userGroups.filter(group => {
-                            if (!group.Location) return false;
-                            const country = group.Location.split(',').pop().trim();
-                            return !['USA', 'Canada', 'Mexico', 'Brazil', 'Argentina', 'UK', 'Germany', 'France', 'Spain', 'Italy', 'Romania', 'United States', 'Europe'].some(c => country.includes(c));
-                        });
-                    }
-                    
-                    currentPage = 1;
-                    renderGroups();
-                });
-            });
-            
-            // Initial render
-            renderGroups();
+            // Initialize the UI
+            initializeUI(userGroups, map);
         })
         .catch(error => {
-            console.error('Error loading user groups data:', error);
-            document.getElementById('totalGroups').textContent = 'Error';
-            document.getElementById('totalCountries').textContent = 'Error';
-            document.getElementById('userGroupsList').innerHTML = '<p>Error loading user groups data. Please refresh the page.</p>';
-            document.getElementById('map').innerHTML = '<p>Error loading map data. Please refresh the page.</p>';
-            document.querySelector('.chart-container').innerHTML = '<p>Error loading chart data. Please refresh the page.</p>';
-            
-            // Fallback to hardcoded data for demonstration
-            console.log('Falling back to hardcoded data');
-            
-            // Update stats with fallback data
-            document.getElementById('totalGroups').textContent = '300+';
-            document.getElementById('totalCountries').textContent = '50+';
-            
-            // Add some fallback markers to the map
-            const fallbackGroups = [
-                { name: 'AWS User Group Berlin', location: 'Berlin, Germany', url: '#' },
-                { name: 'NYC AWS Enthusiasts', location: 'New York, USA', url: '#' },
-                { name: 'AWS Mumbai', location: 'Mumbai, India', url: '#' },
-                { name: 'Sydney AWS Meetup', location: 'Sydney, Australia', url: '#' },
-                { name: 'Paris AWS Community', location: 'Paris, France', url: '#' },
-                { name: 'Tokyo AWS Users', location: 'Tokyo, Japan', url: '#' }
-            ];
-            
-            // Display fallback user groups
-            const container = document.getElementById('userGroupsList');
-            container.innerHTML = '';
-            
-            fallbackGroups.forEach(group => {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <h3>${group.name}</h3>
-                    <p><strong>Location:</strong> ${group.location}</p>
-                    <p><strong>Category:</strong> General AWS User Group</p>
-                    <p><a href="${group.url}" target="_blank">Visit Group</a></p>
-                `;
-                container.appendChild(card);
-            });
+            console.error('Error loading data:', error);
+            document.getElementById('userGroupsList').innerHTML = `<p>Error loading data: ${error.message}</p>`;
         });
 });
+
+// Parse User Groups CSV
+function parseUserGroupsCSV(text) {
+    const lines = text.split('\n');
+    const headers = lines[0].split(',').map(h => h.trim());
+    
+    console.log("CSV Headers:", headers);
+    
+    const userGroups = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        
+        // Handle commas within quoted fields
+        const values = [];
+        let inQuotes = false;
+        let currentValue = '';
+        
+        for (let j = 0; j < lines[i].length; j++) {
+            const char = lines[i][j];
+            
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                values.push(currentValue);
+                currentValue = '';
+            } else {
+                currentValue += char;
+            }
+        }
+        
+        values.push(currentValue);
+        
+        const userGroup = {};
+        headers.forEach((header, idx) => {
+            if (idx < values.length) {
+                userGroup[header] = values[idx] ? values[idx].replace(/^"(.*)"$/, '$1') : '';
+            } else {
+                userGroup[header] = '';
+            }
+        });
+        
+        userGroups.push(userGroup);
+    }
+    
+    return userGroups;
+}
+
+// Initialize UI with the data
+function initializeUI(userGroups, map) {
+    // Variables for pagination and filtering
+    const itemsPerPage = 12;
+    let currentPage = 1;
+    let filteredUserGroups = [...userGroups];
+    let activeFilter = 'all';
+    
+    // Update stats
+    updateStats(userGroups);
+    
+    // Add markers to the map
+    addMarkersToMap(userGroups, map);
+    
+    // Display user groups
+    renderUserGroups();
+    
+    // Set up event handlers
+    setupEventHandlers();
+    
+    // Function to update stats
+    function updateStats(filteredData) {
+        document.getElementById('totalUserGroups').textContent = filteredData.length;
+        
+        const countries = new Set();
+        filteredData.forEach(group => {
+            if (group.Location) {
+                const country = group.Location.split(',').pop().trim();
+                if (country) countries.add(country);
+            }
+        });
+        document.getElementById('totalCountries').textContent = countries.size;
+        
+        const regions = new Set();
+        filteredData.forEach(group => {
+            if (group.Region) {
+                regions.add(group.Region);
+            }
+        });
+        document.getElementById('totalRegions').textContent = regions.size;
+    }
+    
+    // Function to add markers to the map
+    function addMarkersToMap(userGroups, map) {
+        // Function to slightly offset markers at the same location
+        function offsetMarker(lat, lng, collection) {
+            // Check if there are other markers at the same location
+            const sameLocationMarkers = collection.filter(item => 
+                Math.abs(item.lat - lat) < 0.01 && Math.abs(item.lng - lng) < 0.01
+            );
+            
+            if (sameLocationMarkers.length > 0) {
+                // Add a small offset
+                const offset = 0.01 * sameLocationMarkers.length;
+                return {
+                    lat: lat + offset,
+                    lng: lng + offset
+                };
+            }
+            
+            return { lat, lng };
+        }
+        
+        // Collection to track marker positions
+        const userGroupMarkers = [];
+        
+        // Create marker cluster group
+        let userGroupCluster;
+        
+        try {
+            userGroupCluster = L.markerClusterGroup({
+                iconCreateFunction: function(cluster) {
+                    return L.divIcon({
+                        html: '<div class="cluster-marker user-group-cluster">' + cluster.getChildCount() + '</div>',
+                        className: '',
+                        iconSize: L.point(40, 40)
+                    });
+                },
+                disableClusteringAtZoom: 8,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: false
+            });
+        } catch (e) {
+            console.warn('MarkerCluster plugin not found, using standard markers');
+            userGroupCluster = L.layerGroup();
+        }
+        
+        userGroups.forEach(group => {
+            if (group.Latitude && group.Longitude) {
+                const lat = parseFloat(group.Latitude);
+                const lng = parseFloat(group.Longitude);
+                
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    // Apply offset if needed
+                    const position = offsetMarker(lat, lng, userGroupMarkers);
+                    userGroupMarkers.push(position);
+                    
+                    const marker = L.circleMarker([position.lat, position.lng], {
+                        radius: 8,
+                        className: 'map-marker user-group-marker'
+                    });
+                    
+                    marker.bindPopup(`
+                        <div class="map-popup">
+                            <div class="map-popup-header user-group-popup-header">
+                                <h3>${group.Name}</h3>
+                            </div>
+                            <div class="map-popup-content">
+                                <div class="map-popup-logo user-group-popup-logo"></div>
+                                <p><strong>Location:</strong> ${group.Location}</p>
+                                <p><strong>Region:</strong> ${group.Region || 'N/A'}</p>
+                                <p><strong>Members:</strong> ${group.Members || 'N/A'}</p>
+                                <a href="${group.URL}" target="_blank" class="user-group-popup-link">Visit Group</a>
+                            </div>
+                        </div>
+                    `, { className: 'custom-popup' });
+                    
+                    userGroupCluster.addLayer(marker);
+                }
+            }
+        });
+        
+        map.addLayer(userGroupCluster);
+    }
+    
+    // Function to render user groups
+    function renderUserGroups() {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const groupsToShow = filteredUserGroups.slice(startIndex, endIndex);
+        
+        const userGroupsList = document.getElementById('userGroupsList');
+        userGroupsList.innerHTML = '';
+        
+        if (groupsToShow.length === 0) {
+            userGroupsList.innerHTML = '<p>No user groups found matching your criteria.</p>';
+            return;
+        }
+        
+        groupsToShow.forEach(group => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.setAttribute('data-name', group.Name);
+            card.setAttribute('data-region', group.Region || '');
+            
+            // Create card content
+            const cardContent = document.createElement('div');
+            cardContent.className = 'card-content';
+            
+            // Add group name
+            const name = document.createElement('h3');
+            name.textContent = group.Name;
+            name.className = 'card-title';
+            cardContent.appendChild(name);
+            
+            // Add location
+            const location = document.createElement('p');
+            location.className = 'card-text';
+            location.innerHTML = `<strong>Location:</strong> ${group.Location}`;
+            cardContent.appendChild(location);
+            
+            // Add region
+            if (group.Region) {
+                const region = document.createElement('p');
+                region.className = 'card-text';
+                region.innerHTML = `<strong>Region:</strong> ${group.Region}`;
+                cardContent.appendChild(region);
+            }
+            
+            // Add members
+            if (group.Members) {
+                const members = document.createElement('p');
+                members.className = 'card-text';
+                members.innerHTML = `<strong>Members:</strong> ${group.Members}`;
+                cardContent.appendChild(members);
+            }
+            
+            // Add group link
+            const link = document.createElement('a');
+            link.href = group.URL;
+            link.target = '_blank';
+            link.textContent = 'Visit Group';
+            link.className = 'card-link';
+            link.innerHTML = 'Visit Group <i class="fas fa-arrow-right"></i>';
+            cardContent.appendChild(link);
+            
+            // Add card components to the card
+            card.appendChild(cardContent);
+            
+            // Add card to the user groups list
+            userGroupsList.appendChild(card);
+        });
+        
+        // Render pagination
+        renderPagination();
+    }
+    
+    // Function to render pagination
+    function renderPagination() {
+        const totalPages = Math.ceil(filteredUserGroups.length / itemsPerPage);
+        const pagination = document.getElementById('pagination');
+        pagination.innerHTML = '';
+        
+        if (totalPages <= 1) {
+            return;
+        }
+        
+        // Previous button
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'page-btn';
+        prevBtn.textContent = '←';
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderUserGroups();
+            }
+        });
+        pagination.appendChild(prevBtn);
+        
+        // Page buttons (show max 5 pages with ellipsis)
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+        
+        if (endPage - startPage + 1 < maxVisiblePages) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+        
+        if (startPage > 1) {
+            const firstBtn = document.createElement('button');
+            firstBtn.className = 'page-btn';
+            firstBtn.textContent = '1';
+            firstBtn.addEventListener('click', () => {
+                currentPage = 1;
+                renderUserGroups();
+            });
+            pagination.appendChild(firstBtn);
+            
+            if (startPage > 2) {
+                const ellipsis = document.createElement('span');
+                ellipsis.textContent = '...';
+                ellipsis.style.margin = '0 0.5rem';
+                pagination.appendChild(ellipsis);
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const pageBtn = document.createElement('button');
+            pageBtn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+            pageBtn.textContent = i;
+            pageBtn.addEventListener('click', () => {
+                currentPage = i;
+                renderUserGroups();
+            });
+            pagination.appendChild(pageBtn);
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                const ellipsis = document.createElement('span');
+                ellipsis.textContent = '...';
+                ellipsis.style.margin = '0 0.5rem';
+                pagination.appendChild(ellipsis);
+            }
+            
+            const lastBtn = document.createElement('button');
+            lastBtn.className = 'page-btn';
+            lastBtn.textContent = totalPages;
+            lastBtn.addEventListener('click', () => {
+                currentPage = totalPages;
+                renderUserGroups();
+            });
+            pagination.appendChild(lastBtn);
+        }
+        
+        // Next button
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'page-btn';
+        nextBtn.textContent = '→';
+        nextBtn.disabled = currentPage === totalPages;
+        nextBtn.addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderUserGroups();
+            }
+        });
+        pagination.appendChild(nextBtn);
+    }
+    
+    // Setup event handlers
+    function setupEventHandlers() {
+        // Search functionality
+        document.getElementById('userGroupSearch').addEventListener('input', function(e) {
+            filterUserGroups();
+        });
+        
+        // Region filter buttons
+        document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn[data-filter]').forEach(b => {
+                    b.classList.remove('active');
+                });
+                
+                this.classList.add('active');
+                
+                activeFilter = this.dataset.filter.toLowerCase();
+                filterUserGroups();
+            });
+        });
+    }
+    
+    // Filter user groups based on search term and region
+    function filterUserGroups() {
+        const searchTerm = document.getElementById('userGroupSearch').value.toLowerCase();
+        
+        filteredUserGroups = userGroups.filter(group => {
+            // Search term filter
+            const matchesSearch = 
+                (group.Name && group.Name.toLowerCase().includes(searchTerm)) ||
+                (group.Location && group.Location.toLowerCase().includes(searchTerm));
+            
+            // Region/Continent filter
+            let matchesRegion = true;
+            if (activeFilter !== 'all') {
+                // Check if location contains the continent/region name
+                matchesRegion = group.Location && group.Location.toLowerCase().includes(activeFilter.toLowerCase());
+            }
+            
+            return matchesSearch && matchesRegion;
+        });
+        
+        currentPage = 1;
+        updateStats(filteredUserGroups);
+        renderUserGroups();
+    }
+}
 </script>
 {{ end }}

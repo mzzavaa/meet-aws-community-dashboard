@@ -1,0 +1,239 @@
+/* Map Marker Styles */
+.map-marker {
+    border-radius: 50%;
+    text-align: center;
+    color: white;
+    font-weight: bold;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    border: 2px solid white;
+}
+
+.hero-marker {
+    background-color: #FF9900;
+}
+
+.builder-marker {
+    background-color: #1E88E5;
+}
+
+.user-group-marker {
+    background-color: #9C27B0;
+}
+
+/* Cluster Marker Styles */
+.cluster-marker {
+    border-radius: 50%;
+    color: white;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    border: 2px solid white;
+}
+
+.hero-cluster {
+    background-color: #FF9900;
+}
+
+.builder-cluster {
+    background-color: #1E88E5;
+}
+
+.user-group-cluster {
+    background-color: #9C27B0;
+}
+
+/* Leaflet popup customization */
+.leaflet-popup-content-wrapper {
+    border-radius: 8px;
+    padding: 0;
+    overflow: hidden;
+}
+
+.leaflet-popup-content {
+    margin: 0;
+    width: 250px !important;
+}
+
+.map-popup {
+    width: 100%;
+}
+
+.map-popup-header {
+    padding: 10px;
+    text-align: center;
+    color: white;
+}
+
+.hero-popup-header {
+    background-color: #FF9900;
+}
+
+.builder-popup-header {
+    background-color: #1E88E5;
+}
+
+.user-group-popup-header {
+    background-color: #9C27B0;
+}
+
+.map-popup-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: white;
+}
+
+.map-popup-content {
+    padding: 15px;
+    text-align: center;
+}
+
+.map-popup-content p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.map-popup-content a {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 5px 15px;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: background-color 0.3s;
+}
+
+.hero-popup-link {
+    background-color: #FF9900;
+}
+
+.hero-popup-link:hover {
+    background-color: #ec7211;
+}
+
+.builder-popup-link {
+    background-color: #1E88E5;
+}
+
+.builder-popup-link:hover {
+    background-color: #1976D2;
+}
+
+.user-group-popup-link {
+    background-color: #9C27B0;
+}
+
+.user-group-popup-link:hover {
+    background-color: #8E24AA;
+}
+
+.map-popup-logo {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 10px;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.hero-popup-logo {
+    background-image: url('../images/aws-hero-logo.png');
+}
+
+.builder-popup-logo {
+    background-image: url('../images/aws-community-builder-logo.png');
+}
+
+.user-group-popup-logo {
+    background-image: url('../images/aws-user-group-logo.png');
+}
+
+/* Stats card with logo */
+.stat-card {
+    position: relative;
+    min-height: 150px;
+    text-align: center;
+}
+
+.stat-logo {
+    position: relative;
+    left: 50%;
+    top: 15px;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 100px;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.hero-logo {
+    background-image: url('../images/aws-hero-logo.png');
+}
+
+.builder-logo {
+    background-image: url('../images/aws-community-builder-logo.png');
+}
+
+.user-group-logo {
+    background-image: url('../images/aws-user-group-logo.png');
+}
+
+.interview-logo {
+    background-image: url('../images/meet-the-aws-community.png');
+}
+
+/* Layer control customization */
+.leaflet-control-layers {
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border: none;
+}
+
+.leaflet-control-layers-toggle {
+    width: 36px;
+    height: 36px;
+}
+
+.leaflet-control-layers-expanded {
+    padding: 10px;
+    background-color: white;
+    border-radius: 8px;
+}
+
+.leaflet-control-layers-selector {
+    margin-right: 5px;
+}
+
+.leaflet-control-layers-list {
+    margin-bottom: 0;
+}
+
+/* Custom layer control indicators */
+.layer-indicator {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+}
+
+.hero-indicator {
+    background-color: #FF9900;
+}
+
+.builder-indicator {
+    background-color: #1E88E5;
+}
+
+.user-group-indicator {
+    background-color: #9C27B0;
+}

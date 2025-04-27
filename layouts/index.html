@@ -1,8 +1,16 @@
 {{ define "main" }}
-    {{ $userGroupsCSV := "data/aws_user_groups_complete.csv" | absURL }}
+    {{ $userGroupsCSV := "data/aws_user_groups_cleaned_with_coordinates.csv" | absURL }}
     {{ $buildersCSV := "data/community_builders_complete.csv" | absURL }}
+    {{ $heroesCSV := "data/combined_members_with_heroes.csv" | absURL }}
+    
+    <link rel="stylesheet" href="{{ "css/community-components.css" | absURL }}">
+    <link rel="stylesheet" href="{{ "css/map-markers.css" | absURL }}">
     
     <div class="content">
+        <div class="site-header">
+            <img src="{{ "images/meet-the-aws-community.png" | relURL }}" alt="Meet the AWS Community" class="site-logo">
+        </div>
+        
         <h1>{{ .Title }}</h1>
         <p>{{ .Description }}</p>
         
@@ -10,16 +18,24 @@
         
         <div class="stats">
             <div class="stat-card">
+                <div class="stat-logo user-group-logo"></div>
                 <div class="stat-number" id="totalUserGroups">0</div>
                 <div class="stat-label">User Groups</div>
             </div>
             <div class="stat-card">
+                <div class="stat-logo builder-logo"></div>
                 <div class="stat-number" id="totalBuilders">0</div>
                 <div class="stat-label">Community Builders</div>
             </div>
             <div class="stat-card">
-                <div class="stat-number" id="totalCountries">0</div>
-                <div class="stat-label">Countries</div>
+                <div class="stat-logo hero-logo"></div>
+                <div class="stat-number" id="totalHeroes">0</div>
+                <div class="stat-label">AWS Heroes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-logo interview-logo"></div>
+                <div class="stat-number" id="totalInterviews">{{ len (where .Site.RegularPages "Section" "interviews") }}</div>
+                <div class="stat-label">Interviews</div>
             </div>
         </div>
         
@@ -30,43 +46,65 @@
             <h2>AWS Heroes</h2>
             <p>Learn from AWS Heroes who are passionate about sharing knowledge and helping others.</p>
             <div class="grid">
-                <div class="card">
-                    <h3>Meet the Heroes</h3>
-                    <p>Discover AWS Heroes who are recognized for their technical expertise and community contributions.</p>
-                    <p><a href="{{ "heroes" | relURL }}">Browse Heroes →</a></p>
-                </div>
-                <div class="card">
-                    <h3>Featured Hero</h3>
-                    <div id="featuredHero">
-                        <div class="featured-hero-card">
-                            <div class="hero-avatar">
-                                <img src="{{ "images/heroes/chris-williams.jpg" | relURL }}" alt="Chris Williams" onerror="this.src='{{ "images/default-avatar.png" | relURL }}'">
-                            </div>
-                            <div class="hero-info">
-                                <h4>Chris Williams</h4>
-                                <div class="hero-category">AWS Community Hero</div>
-                                <p>Developer Relations Manager at HashiCorp, AWS User Group Leader</p>
-                                <a href="{{ .Site.BaseURL }}interviews/chris-williams/" class="hero-link">Read Interview →</a>
+                <!-- Featured Hero - Chris Williams -->
+                <div class="hero-card">
+                    <div class="card-header">
+                        <div class="video-preview">
+                            <div class="video-thumbnail" style="background-image: url('https://img.youtube.com/vi/eHwJg7XEoDk/mqdefault.jpg')">
+                                <div class="play-button">
+                                    <i class="fas fa-play play-icon"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="card">
-                    <h3>Featured Hero</h3>
-                    <div id="featuredHero2">
-                        <div class="featured-hero-card">
-                            <div class="hero-avatar">
-                                <img src="{{ "images/heroes/default-hero.jpg" | relURL }}" alt="Featured Hero" onerror="this.src='{{ "images/default-avatar.png" | relURL }}'">
-                            </div>
-                            <div class="hero-info">
-                                <h4>Jane Smith</h4>
-                                <div class="hero-category">AWS Container Hero</div>
-                                <p>DevOps Engineer, Speaker, and Open Source Contributor</p>
-                                <a href="#" class="hero-link">View Profile →</a>
-                            </div>
+                    <div class="card-content">
+                        <div class="interview-badge">
+                            <a href="{{ .Site.BaseURL }}interviews/chris-williams/">
+                                <i class="fas fa-video"></i> Interview Available
+                            </a>
                         </div>
+                        <h3 class="card-title">Chris Williams</h3>
+                        <p class="card-text"><strong>Category:</strong> AWS Community Hero</p>
+                        <p class="card-text"><strong>Location:</strong> Portsmouth, USA</p>
+                        <p class="card-description">Chris Williams is the DevRel Mgr for North America for HashiCorp...</p>
+                        <a href="{{ .Site.BaseURL }}interviews/chris-williams/" class="card-link">Read Interview <i class="fas fa-arrow-right"></i></a>
                     </div>
                 </div>
+                
+                <!-- Featured Hero 2 -->
+                <div class="hero-card">
+                    <div class="card-header">
+                        <img src="https://d1.awsstatic.com/getting-started-guides/new-heroes-2023/secuirty/HeadShot_chris_farris-100.6f7cb8a8a9b83c5cc8c5eec3fdfc1799cd0ca051.png" alt="Chris Farris" class="card-image">
+                    </div>
+                    <div class="card-content">
+                        <div class="interview-status status-next-up">
+                            <i class="fas fa-list"></i> Interview In Planning
+                        </div>
+                        <h3 class="card-title">Chris Farris</h3>
+                        <p class="card-text"><strong>Category:</strong> AWS Security Hero</p>
+                        <p class="card-text"><strong>Location:</strong> Atlanta, USA</p>
+                        <p class="card-description">Chris Farris has been in IT since 1994, primarily focused on Linux, networking, and security...</p>
+                        <a href="https://aws.amazon.com/developer/community/heroes/chris-farris/" target="_blank" class="card-link">View Hero Profile <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+                
+                <!-- Featured Hero 3 -->
+                <div class="hero-card">
+                    <div class="card-header">
+                        <img src="https://d1.awsstatic.com/getting-started-guides/hero-images-2025/ahmed-bebars-100.d1eb6693748ab716d70f376ac93c2cdda7187445.png" alt="Ahmed Bebars" class="card-image">
+                    </div>
+                    <div class="card-content">
+                        <div class="interview-status status-next-up">
+                            <i class="fas fa-list"></i> Interview In Planning
+                        </div>
+                        <h3 class="card-title">Ahmed Bebars</h3>
+                        <p class="card-text"><strong>Category:</strong> AWS Container Hero</p>
+                        <p class="card-text"><strong>Location:</strong> New Jersey, USA</p>
+                        <p class="card-description">Ahmed is a Principal Engineer at The New York Times, where he leads the design and delivery...</p>
+                        <a href="https://aws.amazon.com/developer/community/heroes/ahmed-bebars/" target="_blank" class="card-link">View Hero Profile <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+                
                 <div class="explore-all-card">
                     <a href="{{ "heroes" | relURL }}" class="explore-all-link">
                         <i class="fas fa-users"></i>
@@ -146,25 +184,33 @@
             <h2>Community Interviews</h2>
             <p>Get to know AWS community members through in-depth interviews.</p>
             <div class="grid">
-                <div class="card">
-                    <h3>Featured Interview</h3>
-                    <div class="featured-interview">
-                        <h4>Chris Williams</h4>
-                        <p>From Pre-Med to Cloud Architecture</p>
-                        <div class="interview-roles">
-                            <span class="role-badge">AWS Hero</span>
-                            <span class="role-badge">User Group Leader</span>
+                <div class="hero-card">
+                    <div class="card-header">
+                        <div class="video-preview">
+                            <div class="video-thumbnail" style="background-image: url('https://img.youtube.com/vi/eHwJg7XEoDk/mqdefault.jpg')">
+                                <div class="play-button">
+                                    <i class="fas fa-play play-icon"></i>
+                                </div>
+                            </div>
                         </div>
-                        <p><a href="{{ .Site.BaseURL }}interviews/chris-williams/">Read Interview →</a></p>
+                    </div>
+                    <div class="card-content">
+                        <div class="interview-badge">
+                            <a href="{{ .Site.BaseURL }}interviews/chris-williams/">
+                                <i class="fas fa-video"></i> Interview Available
+                            </a>
+                        </div>
+                        <h3 class="card-title">Chris Williams</h3>
+                        <p class="card-text"><strong>Category:</strong> AWS Community Hero</p>
+                        <p class="card-description">From Pre-Med to Cloud Architecture: Chris Williams shares his journey from setting up networks for Doom to becoming an AWS Hero.</p>
+                        <a href="{{ .Site.BaseURL }}interviews/chris-williams/" class="card-link">Read Interview <i class="fas fa-arrow-right"></i></a>
                     </div>
                 </div>
-                <div class="card">
-                    <h3>Latest Interviews</h3>
-                    <ul class="interview-list">
-                        <li><a href="{{ .Site.BaseURL }}interviews/chris-williams/">Chris Williams: From Pre-Med to Cloud Architecture</a></li>
-                        <li><a href="#">Jane Smith: Building Serverless Applications</a></li>
-                        <li><a href="#">Alex Johnson: Machine Learning Journey</a></li>
-                    </ul>
+                <div class="card" style="height: 100%;">
+                    <h3>More Interviews Coming Soon</h3>
+                    <p>We're working on bringing you more interviews with AWS Heroes, Community Builders, and other community members.</p>
+                    <p>Stay tuned for updates and check back soon!</p>
+                    <p><a href="https://www.youtube.com/@meet-the-aws-community" target="_blank">Subscribe to our YouTube Channel →</a></p>
                 </div>
                 <div class="explore-all-card">
                     <a href="{{ .Site.BaseURL }}interviews/" class="explore-all-link">
@@ -206,52 +252,31 @@
         color: #b87dd1;
     }
     
-    .featured-hero-card {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
+    .user-groups, .community-builders {
+        border-left: 4px solid var(--aws-dark-blue);
+        padding-left: 1rem;
+        margin: 2rem 0;
     }
     
-    .hero-avatar {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        overflow: hidden;
-        flex-shrink: 0;
+    .user-groups h2, .community-builders h2 {
+        color: var(--aws-dark-blue);
     }
     
-    .hero-avatar img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
+    .card {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
     
-    .hero-info h4 {
-        margin-top: 0;
-        margin-bottom: 0.5rem;
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
     }
     
-    .hero-category {
-        background-color: var(--aws-orange);
-        color: white;
-        display: inline-block;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    .hero-link {
-        display: inline-block;
-        margin-top: 0.5rem;
-    }
-    
-    .interview-list {
-        padding-left: 1.5rem;
-    }
-    
-    .interview-list li {
-        margin-bottom: 0.5rem;
+    body.dark-mode .card {
+        background-color: var(--dark-surface-lighter);
     }
     
     .explore-all-card {
@@ -261,7 +286,12 @@
         background-color: #f9f9f9;
         border-radius: 8px;
         padding: 1.5rem;
-        transition: background-color 0.3s ease;
+        transition: background-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .explore-all-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
     }
     
     body.dark-mode .explore-all-card {
@@ -342,7 +372,300 @@
             }
         }
         
-        // Rest of your existing JavaScript...
+        // Load User Groups data
+        fetch('{{ $userGroupsCSV }}')
+            .then(response => response.text())
+            .then(data => {
+                const userGroups = parseCSV(data);
+                document.getElementById('totalUserGroups').textContent = userGroups.length;
+                
+                // Update featured user group
+                if (userGroups.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * userGroups.length);
+                    const featuredGroup = userGroups[randomIndex];
+                    
+                    document.getElementById('featuredUserGroup').innerHTML = `
+                        <h4>${featuredGroup.Name || 'AWS User Group'}</h4>
+                        <p><strong>Location:</strong> ${featuredGroup.Location || 'N/A'}</p>
+                        <p><strong>Members:</strong> ${featuredGroup.Members || 'N/A'}</p>
+                        <p><a href="${featuredGroup.URL || '#'}">Visit Group →</a></p>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading user groups data:', error);
+            });
+        
+        // Load Community Builders data
+        fetch('{{ $buildersCSV }}')
+            .then(response => response.text())
+            .then(data => {
+                const builders = parseCSV(data);
+                document.getElementById('totalBuilders').textContent = builders.length;
+                
+                // Update featured builder
+                if (builders.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * builders.length);
+                    const featuredBuilder = builders[randomIndex];
+                    
+                    document.getElementById('featuredBuilder').innerHTML = `
+                        <h4>${featuredBuilder.Name || 'AWS Community Builder'}</h4>
+                        <p><strong>Category:</strong> ${featuredBuilder.Category || 'N/A'}</p>
+                        <p><strong>Location:</strong> ${featuredBuilder.Location || 'N/A'}</p>
+                        <p><a href="${featuredBuilder['Bio URL'] || '#'}">View Profile →</a></p>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading community builders data:', error);
+            });
+        
+        // Calculate total countries
+        Promise.all([
+            fetch('{{ $userGroupsCSV }}').then(response => response.text()),
+            fetch('{{ $buildersCSV }}').then(response => response.text()),
+            fetch('{{ $heroesCSV }}').then(response => response.text())
+        ])
+        .then(([userGroupsData, buildersData, heroesData]) => {
+            const userGroups = parseCSV(userGroupsData);
+            const builders = parseCSV(buildersData);
+            const heroes = parseCSV(heroesData);
+            
+            // Update heroes count
+            const heroCount = heroes.filter(hero => hero.Category && hero.Category.includes('Hero')).length;
+            document.getElementById('totalHeroes').textContent = heroCount;
+            
+            const countries = new Set();
+            
+            userGroups.forEach(group => {
+                if (group.Location) {
+                    const country = group.Location.split(',').pop().trim();
+                    if (country) countries.add(country);
+                }
+            });
+            
+            builders.forEach(builder => {
+                if (builder.Location) {
+                    const country = builder.Location.split(',').pop().trim();
+                    if (country) countries.add(country);
+                }
+            });
+            
+            heroes.forEach(hero => {
+                if (hero.Location) {
+                    const country = hero.Location.split(',').pop().trim();
+                    if (country) countries.add(country);
+                }
+            });
+            
+            // Initialize world map
+            initializeWorldMap(userGroups, builders, heroes);
+        })
+        .catch(error => {
+            console.error('Error calculating total countries:', error);
+        });
+        
+        // Initialize world map
+        function initializeWorldMap(userGroups, builders, heroes) {
+            const map = L.map('worldMap').setView([20, 0], 2);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Function to slightly offset markers at the same location
+            function offsetMarker(lat, lng, collection) {
+                // Check if there are other markers at the same location
+                const sameLocationMarkers = collection.filter(item => 
+                    Math.abs(item.lat - lat) < 0.01 && Math.abs(item.lng - lng) < 0.01
+                );
+                
+                if (sameLocationMarkers.length > 0) {
+                    // Add a small offset
+                    const offset = 0.01 * sameLocationMarkers.length;
+                    return {
+                        lat: lat + offset,
+                        lng: lng + offset
+                    };
+                }
+                
+                return { lat, lng };
+            }
+            
+            // Collections to track marker positions
+            const heroMarkers = [];
+            const builderMarkers = [];
+            const userGroupMarkers = [];
+            
+            // Create marker cluster groups for each type
+            let heroCluster, builderCluster, userGroupCluster;
+            
+            try {
+                heroCluster = L.markerClusterGroup({
+                    iconCreateFunction: function(cluster) {
+                        return L.divIcon({
+                            html: '<div class="cluster-marker hero-cluster">' + cluster.getChildCount() + '</div>',
+                            className: '',
+                            iconSize: L.point(40, 40)
+                        });
+                    },
+                    disableClusteringAtZoom: 8,
+                    spiderfyOnMaxZoom: true,
+                    showCoverageOnHover: false
+                });
+                
+                builderCluster = L.markerClusterGroup({
+                    iconCreateFunction: function(cluster) {
+                        return L.divIcon({
+                            html: '<div class="cluster-marker builder-cluster">' + cluster.getChildCount() + '</div>',
+                            className: '',
+                            iconSize: L.point(40, 40)
+                        });
+                    },
+                    disableClusteringAtZoom: 8,
+                    spiderfyOnMaxZoom: true,
+                    showCoverageOnHover: false
+                });
+                
+                userGroupCluster = L.markerClusterGroup({
+                    iconCreateFunction: function(cluster) {
+                        return L.divIcon({
+                            html: '<div class="cluster-marker user-group-cluster">' + cluster.getChildCount() + '</div>',
+                            className: '',
+                            iconSize: L.point(40, 40)
+                        });
+                    },
+                    disableClusteringAtZoom: 8,
+                    spiderfyOnMaxZoom: true,
+                    showCoverageOnHover: false
+                });
+            } catch (e) {
+                console.warn('MarkerCluster plugin not found, using standard markers');
+                heroCluster = L.layerGroup();
+                builderCluster = L.layerGroup();
+                userGroupCluster = L.layerGroup();
+            }
+            
+            // Add markers for user groups
+            userGroups.forEach(group => {
+                if (group.Latitude && group.Longitude) {
+                    const lat = parseFloat(group.Latitude);
+                    const lng = parseFloat(group.Longitude);
+                    
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        // Apply offset if needed
+                        const position = offsetMarker(lat, lng, userGroupMarkers);
+                        userGroupMarkers.push(position);
+                        
+                        const marker = L.circleMarker([position.lat, position.lng], {
+                            radius: 8,
+                            className: 'map-marker user-group-marker'
+                        });
+                        
+                        marker.bindPopup(`
+                            <div class="map-popup">
+                                <div class="map-popup-header user-group-popup-header">
+                                    <h3>${group.Name}</h3>
+                                </div>
+                                <div class="map-popup-content">
+                                    <div class="map-popup-logo user-group-popup-logo"></div>
+                                    <p><strong>Location:</strong> ${group.Location}</p>
+                                    <p><strong>Members:</strong> ${group.Members || 'N/A'}</p>
+                                    <a href="${group.URL}" target="_blank" class="user-group-popup-link">Visit Group</a>
+                                </div>
+                            </div>
+                        `, { className: 'custom-popup' });
+                        
+                        userGroupCluster.addLayer(marker);
+                    }
+                }
+            });
+            
+            // Add markers for heroes
+            heroes.forEach(hero => {
+                if (hero.Latitude && hero.Longitude) {
+                    const lat = parseFloat(hero.Latitude);
+                    const lng = parseFloat(hero.Longitude);
+                    
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        // Apply offset if needed
+                        const position = offsetMarker(lat, lng, heroMarkers);
+                        heroMarkers.push(position);
+                        
+                        const marker = L.circleMarker([position.lat, position.lng], {
+                            radius: 8,
+                            className: 'map-marker hero-marker'
+                        });
+                        
+                        marker.bindPopup(`
+                            <div class="map-popup">
+                                <div class="map-popup-header hero-popup-header">
+                                    <h3>${hero.Name}</h3>
+                                </div>
+                                <div class="map-popup-content">
+                                    <div class="map-popup-logo hero-popup-logo"></div>
+                                    <p><strong>Category:</strong> ${hero.Category}</p>
+                                    <p><strong>Location:</strong> ${hero.Location}</p>
+                                    <a href="${hero['Bio URL']}" target="_blank" class="hero-popup-link">View Profile</a>
+                                </div>
+                            </div>
+                        `, { className: 'custom-popup' });
+                        
+                        heroCluster.addLayer(marker);
+                    }
+                }
+            });
+            
+            // Add markers for builders
+            builders.forEach(builder => {
+                if (builder.Latitude && builder.Longitude) {
+                    const lat = parseFloat(builder.Latitude);
+                    const lng = parseFloat(builder.Longitude);
+                    
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        // Apply offset if needed
+                        const position = offsetMarker(lat, lng, builderMarkers);
+                        builderMarkers.push(position);
+                        
+                        const marker = L.circleMarker([position.lat, position.lng], {
+                            radius: 8,
+                            className: 'map-marker builder-marker'
+                        });
+                        
+                        marker.bindPopup(`
+                            <div class="map-popup">
+                                <div class="map-popup-header builder-popup-header">
+                                    <h3>${builder.Name}</h3>
+                                </div>
+                                <div class="map-popup-content">
+                                    <div class="map-popup-logo builder-popup-logo"></div>
+                                    <p><strong>Category:</strong> ${builder.Category}</p>
+                                    <p><strong>Location:</strong> ${builder.Location}</p>
+                                    <a href="${builder['Bio URL']}" target="_blank" class="builder-popup-link">View Profile</a>
+                                </div>
+                            </div>
+                        `, { className: 'custom-popup' });
+                        
+                        builderCluster.addLayer(marker);
+                    }
+                }
+            });
+            
+            // Add all clusters to the map
+            map.addLayer(heroCluster);
+            map.addLayer(builderCluster);
+            map.addLayer(userGroupCluster);
+            
+            // Add layer control
+            const baseLayers = {};
+            const overlays = {
+                "AWS Heroes": heroCluster,
+                "Community Builders": builderCluster,
+                "User Groups": userGroupCluster
+            };
+            
+            L.control.layers(baseLayers, overlays).addTo(map);
+        }
     });
     </script>
 {{ end }}
