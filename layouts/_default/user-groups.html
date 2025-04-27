@@ -1,6 +1,8 @@
 {{ define "main" }}
 {{ $userGroupsCSV := "data/aws_user_groups_complete.csv" | absURL }}
 
+<div id="map" style="max-height: 350px; width: 100%"></div>
+
 <div class="content">
     <h1>{{ .Title }}</h1>
     <p>{{ .Description }}</p>
@@ -28,12 +30,7 @@
         </div>
     </div>
     
-    <div id="map"></div>
-    
-    <div class="chart-container">
-        <h2>User Groups by Region</h2>
-        <svg id="regionChart" width="100%" height="100%"></svg>
-    </div>
+
     
     <h2>All User Groups</h2>
     <div id="userGroupsList" class="grid">
@@ -44,7 +41,11 @@
     <div class="pagination" id="pagination">
         <!-- Pagination will be populated here -->
     </div>
-</div>
+    
+    <div class="chart-container">
+        <h2>User Groups by Region</h2>
+        <svg id="regionChart" width="100%" height="100%"></svg>
+    </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

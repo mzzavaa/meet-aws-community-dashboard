@@ -64,23 +64,25 @@ document.addEventListener('DOMContentLoaded', function() {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
     
-    // Function to parse CSV
+
     function parseCSV(text) {
         try {
-            const lines = text.split('\n');
-            const headers = lines[0].split(',').map(h => h.trim());
+            const lines = text.trim().split('\n');
+            console.log("First line (headers):", lines[0]);
             
+            const headers = lines[0].split(',').map(h => h.trim());
+            console.log("Parsed headers:", headers);
+
             return lines.slice(1)
                 .filter(line => line.trim())
-                .map(line => {
-                    // Handle commas within quoted fields
+                .map((line, index) => {
                     const values = [];
                     let inQuotes = false;
                     let currentValue = '';
-                    
+
                     for (let i = 0; i < line.length; i++) {
                         const char = line[i];
-                        
+
                         if (char === '"') {
                             inQuotes = !inQuotes;
                         } else if (char === ',' && !inQuotes) {
@@ -90,15 +92,17 @@ document.addEventListener('DOMContentLoaded', function() {
                             currentValue += char;
                         }
                     }
-                    
                     values.push(currentValue);
-                    
-                    // Create object from headers and values
+
+                    console.log(`Line ${index + 2}:`, values);
+
                     const entry = {};
                     headers.forEach((header, i) => {
                         entry[header] = values[i] ? values[i].replace(/^"(.*)"$/, '$1') : '';
                     });
-                    
+
+                    console.log(`Entry ${index + 1}:`, entry);
+
                     return entry;
                 });
         } catch (e) {
@@ -106,18 +110,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return [];
         }
     }
-    
-    // Function to get coordinates for a location
-    function getCoordinates(locationStr) {
-        if (!locationStr) return [0, 0];
-        
-        // Simple hash-based coordinate generation for demo
-        const hash = locationStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const lat = (hash % 140) - 70; // Range from -70 to 70
-        const lng = (hash * 31 % 320) - 160; // Range from -160 to 160
-        
-        return [lat, lng];
-    }
+
+
     
     // Use absolute URL for data file in Hugo
     const buildersUrl = "{{ $buildersCSV }}";
@@ -180,6 +174,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const categoryData = {};
                 filteredData.forEach(builder => {
                     if (builder.Category) {
+                        console.log("Builder:", builder.Name, builder.Latitude, builder.Longitude);
                         const category = builder.Category.split(' Builder')[0];
                         if (!categoryData[category]) {
                             categoryData[category] = 0;
@@ -261,46 +256,47 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             
-            // Group builders by country for clustering
-            const countryBuilders = {};
-            builders.forEach(builder => {
-                if (!builder.Location) return;
-                
-                const location = builder.Location;
-                const country = location.split(',').pop().trim();
-                if (!country) return;
-                
-                if (!countryBuilders[country]) {
-                    countryBuilders[country] = [];
-                }
-                countryBuilders[country].push(builder);
-            });
+            // Initialize marker cluster group for individual markers
+            let markerGroupBuilder;
+            try {
+                // Use marker clustering if available
+                markerGroupBuilder = L.markerClusterGroup();
+            } catch (e) {
+                // Fall back to a regular layer group if clustering isn't available
+                console.warn('MarkerCluster plugin not found, using standard markers');
+                markerGroupBuilder = L.layerGroup();
+            }
             
-            // Add markers for each country
-            Object.entries(countryBuilders).forEach(([country, countryData]) => {
-                const coords = getCoordinates(country);
-                const marker = L.circleMarker(coords, {
-                    radius: Math.min(Math.max(Math.sqrt(countryData.length) * 3, 8), 20),
-                    fillColor: '#FF9900', // AWS Orange
-                    color: '#fff',
-                    weight: 1,
-                    opacity: 1,
-                    fillOpacity: 0.8
-                }).addTo(map);
-                
-                const popupContent = `
-                    <div class="map-popup">
-                        <h3>${country}</h3>
-                        <p><strong>${countryData.length}</strong> Community Builders</p>
-                        <ul class="map-list">
-                            ${countryData.slice(0, 5).map(builder => `<li>${builder.Name}</li>`).join('')}
-                            ${countryData.length > 5 ? `<li>and ${countryData.length - 5} more...</li>` : ''}
-                        </ul>
-                    </div>
-                `;
-                
-                marker.bindPopup(popupContent);
+            
+            builders.forEach(builder => {
+                console.log("Adding builder:", builder.Name, builder.Latitude, builder.Longitude);
+
+                if (builder.Latitude && builder.Longitude) {
+                    const lat = parseFloat(builder.Latitude);
+                    const lng = parseFloat(builder.Longitude);
+                    
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        const marker = L.marker([lat, lng]);
+                        
+                        let imageHtml = '';
+                        
+                        const popupContent = `
+                            <div style="text-align: center; padding: 10px;">
+                                ${imageHtml}
+                                <h3 style="color:black">${builder.Name}</h3>
+                                <p><strong>Location:</strong> ${builder.Location}</p>
+                                <p><strong>Category:</strong> ${builder.Category}</p>
+                                <p><a href="${builder['Bio URL']}" target="_blank">View Profile</a></p>
+                            </div>
+                        `;
+                        
+                        marker.bindPopup(popupContent);
+                        markerGroupBuilder.addLayer(marker);
+                    }
+                }
             });
+                        
+            map.addLayer(markerGroupBuilder);
             
             // Display community builders
             const itemsPerPage = 12;
