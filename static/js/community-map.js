@@ -106,7 +106,7 @@ class CommunityMap {
      * Load user groups data
      */
     loadUserGroups() {
-        return fetch('/static/data/aws_user_groups_complete.csv')
+        return fetch('/static/data/aws_user_groups.csv')
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -128,7 +128,7 @@ class CommunityMap {
      * Load community builders data
      */
     loadCommunityBuilders() {
-        return fetch('/static/data/community_builders_complete.csv')
+        return fetch('/static/data/aws_community_builders.csv')
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -150,7 +150,7 @@ class CommunityMap {
      * Load heroes data
      */
     loadHeroes() {
-        return fetch('/static/data/heroes.csv')
+        return fetch('/static/data/aws_heroes.csv')
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
