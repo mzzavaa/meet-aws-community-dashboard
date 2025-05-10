@@ -1,5 +1,5 @@
 {{ define "main" }}
-{{ $heroesCSV := "data/aws_heroes.csv" | relURL }}
+{{ $heroesCSV := printf "%s?v=%s" "data/aws_heroes.csv" (now.Format "20060102150405") | relURL }}
 
 <link rel="stylesheet" href="{{ "css/community-components.css" | absURL }}">
 

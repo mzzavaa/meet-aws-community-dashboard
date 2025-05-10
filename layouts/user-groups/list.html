@@ -49,7 +49,7 @@
             });
             
             // Use the CSV URL directly
-            const groupsCSV = "/data/aws_user_groups.csv";
+            const groupsCSV = "/data/aws_user_groups.csv?v=" + new Date().getTime();
             console.log("Loading AWS User Groups from:", groupsCSV);
             
             // Load user groups data

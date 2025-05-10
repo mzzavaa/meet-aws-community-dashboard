@@ -1,5 +1,5 @@
 {{ define "main" }}
-{{ $userGroupsCSV := "data/aws_user_groups.csv" | relURL }}
+{{ $userGroupsCSV := printf "%s?v=%s" "data/aws_user_groups.csv" (now.Format "20060102150405") | relURL }}
 
 
 <style>

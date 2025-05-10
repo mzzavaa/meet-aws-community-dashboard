@@ -46,6 +46,11 @@ jobs:
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
+      - name: Clear cache
+        run: |
+          rm -rf public
+          rm -rf resources
+          echo "Cache cleared"
       - name: Install Node.js dependencies
         run: "[[ -f package-lock.json || -f npm-shrinkwrap.json ]] && npm ci || true"
       - name: Build with Hugo
@@ -55,6 +60,8 @@ jobs:
         run: |
           hugo \
             --minify \
+            --cleanDestinationDir \
+            --ignoreCache \
             --baseURL "${{ steps.pages.outputs.base_url }}/"
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

@@ -1,5 +1,5 @@
 {{ define "main" }}
-{{ $buildersCSV := "data/aws_community_builders.csv" | relURL }}
+{{ $buildersCSV := printf "%s?v=%s" "data/aws_community_builders.csv" (now.Format "20060102150405") | relURL }}
 
 <style>
 /* Override filter button styles specifically for community builders page */

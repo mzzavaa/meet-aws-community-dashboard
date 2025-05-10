@@ -52,7 +52,7 @@
             });
             
             // Use the CSV URL directly
-            const buildersCSV = "/data/aws_community_builders.csv";
+            const buildersCSV = "/data/aws_community_builders.csv?v=" + new Date().getTime();
             console.log("Loading AWS Community Builders from:", buildersCSV);
             
             // Load community builders data

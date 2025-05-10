@@ -75,7 +75,7 @@
             });
             
             // Use the CSV URL directly
-            const heroesCSV = "/data/aws_heroes.csv";
+            const heroesCSV = "/data/aws_heroes.csv?v=" + new Date().getTime();
             console.log("Loading AWS Heroes from:", heroesCSV);
             
             // Load heroes data

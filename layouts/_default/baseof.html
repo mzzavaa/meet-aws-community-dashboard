@@ -531,5 +531,7 @@
     <!-- Disabled interview-status.js as functionality is now integrated in heroes.html -->
     <!-- <script src="{{ "js/interview-status.js" | relURL }}"></script> -->
     <script src="{{ "js/debug-card-structure.js" | relURL }}"></script>
+    <!-- Cache buster script -->
+    <script src="{{ printf "%s?v=%s" "js/cache-buster.js" (now.Format "20060102150405") | relURL }}"></script>
 </body>
 </html>
