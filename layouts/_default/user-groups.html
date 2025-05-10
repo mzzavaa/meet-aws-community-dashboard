@@ -1,476 +1,659 @@
 {{ define "main" }}
-{{ $userGroupsCSV := "data/aws_user_groups_cleaned_with_coordinates.csv" | absURL }}
+{{ $userGroupsCSV := "data/aws_user_groups_with_members.csv" | relURL }}
 
-<link rel="stylesheet" href="{{ "css/community-components.css" | absURL }}">
-<link rel="stylesheet" href="{{ "css/map-markers.css" | absURL }}">
 
-<div class="content">
-    <h1>{{ .Title }}</h1>
-    <p>{{ .Description }}</p>
+<style>
+/* Override filter button styles specifically for user groups page */
+.user-groups-page .filter-btn {
+    border: 1px solid var(--aws-purple);
+    background-color: transparent;
+    color: var(--card-text);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+} 
+
+.user-groups-page .filter-btn:hover {
+    background-color: rgba(161, 102, 255, 0.1);
+    color: var(--aws-purple);
+    border-color: var(--aws-purple);
+}
+
+.user-groups-page .filter-btn.active {
+    background-color: var(--aws-purple) !important;
+    color: white !important;
+    border-color: var(--aws-purple) !important;
+}
+
+/* Override pagination button styles */
+.user-groups-page .page-btn.active {
+    background-color: var(--aws-purple) !important;
+    color: white !important;
+}
+
+/* Ensure stat numbers are purple */
+.user-groups-page .stat-number {
+    color: var(--aws-purple) !important;
+}
+</style>
+
+<div class="user-groups-page">
     
-    {{ .Content }}
+    <div class="content">
+        <h1>AWS User Groups</h1>
+        {{ .Content }}
+    </div>
     
-    <div id="map" style="height: 500px; width: 100%; border-radius: 8px; margin: 2rem 0;"></div>
+    <div id="map" style="height: 400px;"></div>
     
     <div class="stats">
         <div class="stat-card">
-            <div class="stat-logo user-group-logo"></div>
-            <div class="stat-number" id="totalUserGroups">0</div>
+            <div class="stat-number" id="total-user-groups">0</div>
             <div class="stat-label">User Groups</div>
         </div>
         <div class="stat-card">
-            <div class="stat-number" id="totalCountries">0</div>
-            <div class="stat-label">Countries</div>
+            <div class="stat-number" id="total-women-groups">0</div>
+            <div class="stat-label">Women's Groups</div>
         </div>
         <div class="stat-card">
-            <div class="stat-number" id="totalRegions">0</div>
-            <div class="stat-label">AWS Regions</div>
+            <div class="stat-number" id="total-countries">0</div>
+            <div class="stat-label">Countries</div>
         </div>
     </div>
     
     <div class="search-container">
-        <input type="text" id="userGroupSearch" class="search-input" placeholder="Search AWS User Groups by name, location, or region...">
+        <input type="text" id="search-input" class="search-input" placeholder="Search by name, location, or category...">
+        
         <div class="filters">
-            <button class="filter-btn active" data-filter="all">All Regions</button>
-            <button class="filter-btn" data-filter="North America">North America</button>
-            <button class="filter-btn" data-filter="Europe">Europe</button>
-            <button class="filter-btn" data-filter="Asia">Asia</button>
-            <button class="filter-btn" data-filter="South America">South America</button>
-            <button class="filter-btn" data-filter="Africa">Africa</button>
-            <button class="filter-btn" data-filter="Australia">Australia</button>
+            <button class="filter-btn active" data-category="all">All Groups</button>
+            <button class="filter-btn" data-category="women">Women's Groups</button>
+            <button class="filter-btn" data-category="serverless">Serverless</button>
         </div>
     </div>
     
-    <h2>All AWS User Groups</h2>
-    <div id="userGroupsList" class="grid">
-        <!-- User Groups will be populated here -->
-        <div class="loading">Loading AWS User Groups data...</div>
+    <div id="groups-container" class="grid"></div>
+    
+    <div class="pagination" id="pagination"></div>
+    
+    <div id="loading" class="loading">
+        <div class="loading-spinner"></div>
+        <p>Loading AWS User Groups...</p>
     </div>
     
-    <div class="pagination" id="pagination">
-        <!-- Pagination will be populated here -->
-    </div>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('AWS User Groups page loaded, initializing...');
-    
-    // Initialize the map
-    const map = L.map('map').setView([20, 0], 2);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
-    
-    // Use the CSV URL from Hugo
-    const userGroupsUrl = "{{ $userGroupsCSV }}";
-    console.log("Loading AWS User Groups from:", userGroupsUrl);
-    
-    // Load user groups data
-    fetch(userGroupsUrl)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            return response.text();
-        })
-        .then(text => {
-            // Parse CSV
-            const userGroups = parseUserGroupsCSV(text);
-            console.log(`Loaded ${userGroups.length} AWS User Groups`);
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the map
+            const map = L.map('map').setView([20, 0], 2);
             
-            // Initialize the UI
-            initializeUI(userGroups, map);
-        })
-        .catch(error => {
-            console.error('Error loading data:', error);
-            document.getElementById('userGroupsList').innerHTML = `<p>Error loading data: ${error.message}</p>`;
-        });
-});
-
-// Parse User Groups CSV
-function parseUserGroupsCSV(text) {
-    const lines = text.split('\n');
-    const headers = lines[0].split(',').map(h => h.trim());
-    
-    console.log("CSV Headers:", headers);
-    
-    const userGroups = [];
-    
-    for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue;
-        
-        // Handle commas within quoted fields
-        const values = [];
-        let inQuotes = false;
-        let currentValue = '';
-        
-        for (let j = 0; j < lines[i].length; j++) {
-            const char = lines[i][j];
+            // Add the tile layer (OpenStreetMap)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
             
-            if (char === '"') {
-                inQuotes = !inQuotes;
-            } else if (char === ',' && !inQuotes) {
-                values.push(currentValue);
-                currentValue = '';
-            } else {
-                currentValue += char;
-            }
-        }
-        
-        values.push(currentValue);
-        
-        const userGroup = {};
-        headers.forEach((header, idx) => {
-            if (idx < values.length) {
-                userGroup[header] = values[idx] ? values[idx].replace(/^"(.*)"$/, '$1') : '';
-            } else {
-                userGroup[header] = '';
-            }
-        });
-        
-        userGroups.push(userGroup);
-    }
-    
-    return userGroups;
-}
-
-// Initialize UI with the data
-function initializeUI(userGroups, map) {
-    // Variables for pagination and filtering
-    const itemsPerPage = 12;
-    let currentPage = 1;
-    let filteredUserGroups = [...userGroups];
-    let activeFilter = 'all';
-    
-    // Update stats
-    updateStats(userGroups);
-    
-    // Add markers to the map
-    addMarkersToMap(userGroups, map);
-    
-    // Display user groups
-    renderUserGroups();
-    
-    // Set up event handlers
-    setupEventHandlers();
-    
-    // Function to update stats
-    function updateStats(filteredData) {
-        document.getElementById('totalUserGroups').textContent = filteredData.length;
-        
-        const countries = new Set();
-        filteredData.forEach(group => {
-            if (group.Location) {
-                const country = group.Location.split(',').pop().trim();
-                if (country) countries.add(country);
-            }
-        });
-        document.getElementById('totalCountries').textContent = countries.size;
-        
-        const regions = new Set();
-        filteredData.forEach(group => {
-            if (group.Region) {
-                regions.add(group.Region);
-            }
-        });
-        document.getElementById('totalRegions').textContent = regions.size;
-    }
-    
-    // Function to add markers to the map
-    function addMarkersToMap(userGroups, map) {
-        // Function to slightly offset markers at the same location
-        function offsetMarker(lat, lng, collection) {
-            // Check if there are other markers at the same location
-            const sameLocationMarkers = collection.filter(item => 
-                Math.abs(item.lat - lat) < 0.01 && Math.abs(item.lng - lng) < 0.01
-            );
-            
-            if (sameLocationMarkers.length > 0) {
-                // Add a small offset
-                const offset = 0.01 * sameLocationMarkers.length;
-                return {
-                    lat: lat + offset,
-                    lng: lng + offset
-                };
-            }
-            
-            return { lat, lng };
-        }
-        
-        // Collection to track marker positions
-        const userGroupMarkers = [];
-        
-        // Create marker cluster group
-        let userGroupCluster;
-        
-        try {
-            userGroupCluster = L.markerClusterGroup({
-                iconCreateFunction: function(cluster) {
-                    return L.divIcon({
-                        html: '<div class="cluster-marker user-group-cluster">' + cluster.getChildCount() + '</div>',
-                        className: '',
-                        iconSize: L.point(40, 40)
-                    });
-                },
-                disableClusteringAtZoom: 8,
-                spiderfyOnMaxZoom: true,
-                showCoverageOnHover: false
+            // Custom purple icon for markers
+            const purpleIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
             });
-        } catch (e) {
-            console.warn('MarkerCluster plugin not found, using standard markers');
-            userGroupCluster = L.layerGroup();
-        }
-        
-        userGroups.forEach(group => {
-            if (group.Latitude && group.Longitude) {
-                const lat = parseFloat(group.Latitude);
-                const lng = parseFloat(group.Longitude);
+            
+            // Function to slightly offset markers at the same location
+            function offsetMarker(lat, lng, collection) {
+                // Check if there are other markers at the same location
+                const sameLocationMarkers = collection.filter(item => 
+                    Math.abs(item.lat - lat) < 0.01 && Math.abs(item.lng - lng) < 0.01
+                );
                 
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    // Apply offset if needed
-                    const position = offsetMarker(lat, lng, userGroupMarkers);
-                    userGroupMarkers.push(position);
-                    
-                    const marker = L.circleMarker([position.lat, position.lng], {
-                        radius: 8,
-                        className: 'map-marker user-group-marker'
-                    });
-                    
-                    marker.bindPopup(`
-                        <div class="map-popup">
-                            <div class="map-popup-header user-group-popup-header">
-                                <h3>${group.Name}</h3>
-                            </div>
-                            <div class="map-popup-content">
-                                <div class="map-popup-logo user-group-popup-logo"></div>
-                                <p><strong>Location:</strong> ${group.Location}</p>
-                                <p><strong>Region:</strong> ${group.Region || 'N/A'}</p>
-                                <p><strong>Members:</strong> ${group.Members || 'N/A'}</p>
-                                <a href="${group.URL}" target="_blank" class="user-group-popup-link">Visit Group</a>
-                            </div>
-                        </div>
-                    `, { className: 'custom-popup' });
-                    
-                    userGroupCluster.addLayer(marker);
+                if (sameLocationMarkers.length > 0) {
+                    // Add a small offset
+                    const offset = 0.01 * sameLocationMarkers.length;
+                    return {
+                        lat: lat + offset,
+                        lng: lng + offset
+                    };
                 }
-            }
-        });
-        
-        map.addLayer(userGroupCluster);
-    }
-    
-    // Function to render user groups
-    function renderUserGroups() {
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        const groupsToShow = filteredUserGroups.slice(startIndex, endIndex);
-        
-        const userGroupsList = document.getElementById('userGroupsList');
-        userGroupsList.innerHTML = '';
-        
-        if (groupsToShow.length === 0) {
-            userGroupsList.innerHTML = '<p>No user groups found matching your criteria.</p>';
-            return;
-        }
-        
-        groupsToShow.forEach(group => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.setAttribute('data-name', group.Name);
-            card.setAttribute('data-region', group.Region || '');
-            
-            // Create card content
-            const cardContent = document.createElement('div');
-            cardContent.className = 'card-content';
-            
-            // Add group name
-            const name = document.createElement('h3');
-            name.textContent = group.Name;
-            name.className = 'card-title';
-            cardContent.appendChild(name);
-            
-            // Add location
-            const location = document.createElement('p');
-            location.className = 'card-text';
-            location.innerHTML = `<strong>Location:</strong> ${group.Location}`;
-            cardContent.appendChild(location);
-            
-            // Add region
-            if (group.Region) {
-                const region = document.createElement('p');
-                region.className = 'card-text';
-                region.innerHTML = `<strong>Region:</strong> ${group.Region}`;
-                cardContent.appendChild(region);
+                
+                return { lat, lng };
             }
             
-            // Add members
-            if (group.Members) {
-                const members = document.createElement('p');
-                members.className = 'card-text';
-                members.innerHTML = `<strong>Members:</strong> ${group.Members}`;
-                cardContent.appendChild(members);
-            }
+            // Collection to track marker positions
+            const userGroupMarkers = [];
             
-            // Add group link
-            const link = document.createElement('a');
-            link.href = group.URL;
-            link.target = '_blank';
-            link.textContent = 'Visit Group';
-            link.className = 'card-link';
-            link.innerHTML = 'Visit Group <i class="fas fa-arrow-right"></i>';
-            cardContent.appendChild(link);
+            // Use the CSV URL from Hugo with cache-busting parameter
+            const userGroupsUrl = "{{ $userGroupsCSV }}";
+            console.log("Loading AWS User Groups from:", userGroupsUrl);
             
-            // Add card components to the card
-            card.appendChild(cardContent);
-            
-            // Add card to the user groups list
-            userGroupsList.appendChild(card);
-        });
-        
-        // Render pagination
-        renderPagination();
-    }
-    
-    // Function to render pagination
-    function renderPagination() {
-        const totalPages = Math.ceil(filteredUserGroups.length / itemsPerPage);
-        const pagination = document.getElementById('pagination');
-        pagination.innerHTML = '';
-        
-        if (totalPages <= 1) {
-            return;
-        }
-        
-        // Previous button
-        const prevBtn = document.createElement('button');
-        prevBtn.className = 'page-btn';
-        prevBtn.textContent = '←';
-        prevBtn.disabled = currentPage === 1;
-        prevBtn.addEventListener('click', () => {
-            if (currentPage > 1) {
-                currentPage--;
-                renderUserGroups();
-            }
-        });
-        pagination.appendChild(prevBtn);
-        
-        // Page buttons (show max 5 pages with ellipsis)
-        const maxVisiblePages = 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-        
-        if (endPage - startPage + 1 < maxVisiblePages) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
-        }
-        
-        if (startPage > 1) {
-            const firstBtn = document.createElement('button');
-            firstBtn.className = 'page-btn';
-            firstBtn.textContent = '1';
-            firstBtn.addEventListener('click', () => {
-                currentPage = 1;
-                renderUserGroups();
-            });
-            pagination.appendChild(firstBtn);
-            
-            if (startPage > 2) {
-                const ellipsis = document.createElement('span');
-                ellipsis.textContent = '...';
-                ellipsis.style.margin = '0 0.5rem';
-                pagination.appendChild(ellipsis);
-            }
-        }
-        
-        for (let i = startPage; i <= endPage; i++) {
-            const pageBtn = document.createElement('button');
-            pageBtn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
-            pageBtn.textContent = i;
-            pageBtn.addEventListener('click', () => {
-                currentPage = i;
-                renderUserGroups();
-            });
-            pagination.appendChild(pageBtn);
-        }
-        
-        if (endPage < totalPages) {
-            if (endPage < totalPages - 1) {
-                const ellipsis = document.createElement('span');
-                ellipsis.textContent = '...';
-                ellipsis.style.margin = '0 0.5rem';
-                pagination.appendChild(ellipsis);
-            }
-            
-            const lastBtn = document.createElement('button');
-            lastBtn.className = 'page-btn';
-            lastBtn.textContent = totalPages;
-            lastBtn.addEventListener('click', () => {
-                currentPage = totalPages;
-                renderUserGroups();
-            });
-            pagination.appendChild(lastBtn);
-        }
-        
-        // Next button
-        const nextBtn = document.createElement('button');
-        nextBtn.className = 'page-btn';
-        nextBtn.textContent = '→';
-        nextBtn.disabled = currentPage === totalPages;
-        nextBtn.addEventListener('click', () => {
-            if (currentPage < totalPages) {
-                currentPage++;
-                renderUserGroups();
-            }
-        });
-        pagination.appendChild(nextBtn);
-    }
-    
-    // Setup event handlers
-    function setupEventHandlers() {
-        // Search functionality
-        document.getElementById('userGroupSearch').addEventListener('input', function(e) {
-            filterUserGroups();
-        });
-        
-        // Region filter buttons
-        document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.filter-btn[data-filter]').forEach(b => {
-                    b.classList.remove('active');
+            // Load user groups data
+            fetch(userGroupsUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(csvText => {
+                    // Parse CSV
+                    const groups = parseCSV(csvText);
+                    
+                    // Debug: Log first few groups to check GroupImage
+                    console.log("First group:", groups[0]);
+                    if (groups[0]) {
+                        console.log("Group properties:", Object.keys(groups[0]));
+                        console.log("GroupImage available:", groups[0].GroupImage);
+                    }
+                    // Hide loading indicator
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    // Create marker cluster group
+                    const markerCluster = L.markerClusterGroup({
+                        maxClusterRadius: 50,
+                        spiderfyOnMaxZoom: true,
+                        showCoverageOnHover: true,
+                        zoomToBoundsOnClick: true,
+                        iconCreateFunction: function(cluster) {
+                            const count = cluster.getChildCount();
+                            // Calculate color intensity based on count
+                            let color;
+                            if (count < 10) {
+                                color = '#a166ff'; // Light purple
+                            } else if (count < 25) {
+                                color = '#8c52c7'; // Medium purple
+                            } else if (count < 50) {
+                                color = '#6a3d99'; // Darker purple
+                            } else {
+                                color = '#4a2a6b'; // Very dark purple
+                            }
+                            
+                            return L.divIcon({
+                                html: `<div style="background-color: ${color}; color: white; border-radius: 50%; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: bold;">${count}</div>`,
+                                className: 'marker-cluster',
+                                iconSize: L.point(40, 40)
+                            });
+                        }
+                    });
+                    
+                    // Add markers to the cluster
+                    groups.forEach(group => {
+                        if (group.Latitude && group.Longitude) {
+                            const lat = parseFloat(group.Latitude);
+                            const lng = parseFloat(group.Longitude);
+                            
+                            if (!isNaN(lat) && !isNaN(lng)) {
+                                // Apply offset if needed
+                                const position = offsetMarker(lat, lng, userGroupMarkers);
+                                userGroupMarkers.push(position);
+                                
+                                const marker = L.marker([position.lat, position.lng], {
+                                    icon: purpleIcon
+                                });
+                                
+                                marker.bindPopup(`
+                                    <div class="map-popup user-group-map-popup user-group-popup-content" style="padding: 0; border-radius: 8px; overflow: hidden; max-width: 250px;">
+                                        ${group.GroupImage ? 
+                                            `<div style="height: 120px; width: 100%; overflow: hidden;">
+                                                <img src="${group.GroupImage}" alt="${group.Name}" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                                             </div>` : 
+                                            `<div style="height: 100px; background-color: var(--aws-dark-blue); display: flex; align-items: center; justify-content: center;">
+                                                <div style="width: 100px; height: 100px; margin: 0; background-image: url('{{ "images/aws-user-group-logo.png" | absURL }}'); background-size: contain; background-position: center; background-repeat: no-repeat;"></div>
+                                             </div>`
+                                        }
+                                        <div style="padding: 12px 15px 5px; border-bottom: 3px solid var(--aws-purple);">
+                                            <h3 style="margin: 0 0 8px; font-size: 16px; color: #333333;">${group.Name}</h3>
+                                            <p style="margin: 5px 0; font-size: 13px;"><i class="fas fa-map-marker-alt"></i> ${group.Location}</p>
+                                            ${group.Members && group.Members !== '' ? `<p style="margin: 5px 0; font-size: 13px;"><i class="fas fa-users"></i> ${group.Members} members</p>` : ''}
+                                            <a href="${group.URL}" target="_blank" style="display: inline-block; margin-top: 8px; text-decoration: none; font-weight: 500; font-size: 13px;">Visit Group <i class="fas fa-external-link-alt"></i></a>
+                                        </div>
+                                    </div>
+                                `, {
+                                    className: 'custom-popup',
+                                    minWidth: 200,
+                                    maxWidth: 250
+                                });
+                                
+                                markerCluster.addLayer(marker);
+                            }
+                        }
+                    });
+                    
+                    // Add the marker cluster to the map
+                    map.addLayer(markerCluster);
+                    
+                    // Initialize pagination
+                    const itemsPerPage = 12;
+                    let currentPage = 1;
+                    let filteredGroups = [...groups];
+                    
+                    // Display groups with pagination
+                    function displayGroups(page) {
+                        const container = document.getElementById('groups-container');
+                        container.innerHTML = '';
+                        
+                        const start = (page - 1) * itemsPerPage;
+                        const end = start + itemsPerPage;
+                        const paginatedGroups = filteredGroups.slice(start, end);
+                        
+                        if (paginatedGroups.length === 0) {
+                            container.innerHTML = '<p class="no-results">No user groups found matching your criteria.</p>';
+                            return;
+                        }
+                        
+                        paginatedGroups.forEach(group => {
+                            // Create card
+                            const card = document.createElement('div');
+                            card.className = 'user-group-card';
+                            card.style.borderRadius = '8px';
+                            card.style.overflow = 'hidden';
+                            card.style.display = 'flex';
+                            card.style.flexDirection = 'column';
+                            card.style.height = '100%';
+                            card.style.borderTop = '3px solid var(--aws-purple)';
+                            card.style.backgroundColor = 'var(--card-bg)';
+                            card.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; // Enhanced box shadow
+                            card.style.transition = 'transform 0.3s ease, box-shadow 0.3s ease';
+                            
+                            // Create card header with increased height
+                            const cardHeader = document.createElement('div');
+                            cardHeader.className = 'card-header';
+                            cardHeader.style.height = '180px'; // Increased from 140px to 180px
+                            cardHeader.style.width = '100%';
+                            cardHeader.style.overflow = 'hidden';
+                            cardHeader.style.position = 'relative';
+                            cardHeader.style.borderRadius = '8px 8px 0 0';
+                            cardHeader.style.padding = '0';
+                            
+                            // Check if there's a group image available
+                            if (group.GroupImage && group.GroupImage.trim() !== '') {
+                                // Use the provided image with consistent cropping
+                                const imgContainer = document.createElement('div');
+                                imgContainer.style.width = '100%';
+                                imgContainer.style.height = '100%';
+                                imgContainer.style.overflow = 'hidden';
+                                imgContainer.style.position = 'relative';
+                                
+                                const img = document.createElement('img');
+                                img.src = group.GroupImage;
+                                img.alt = group.Name;
+                                img.loading = 'lazy';
+                                img.style.width = '100%';
+                                img.style.height = '100%';
+                                img.style.objectFit = 'cover';
+                                img.style.objectPosition = 'center';
+                                
+                                imgContainer.appendChild(img);
+                                cardHeader.appendChild(imgContainer);
+                            } else {
+                                // Fallback to default logo on darker background
+                                cardHeader.style.backgroundColor = 'var(--aws-dark-blue)';
+                                cardHeader.style.display = 'flex';
+                                cardHeader.style.alignItems = 'center';
+                                cardHeader.style.justifyContent = 'center';
+                                
+                                const logoDiv = document.createElement('div');
+                                logoDiv.style.width = '140px'; // Increased size
+                                logoDiv.style.height = '140px'; // Increased size
+                                logoDiv.style.backgroundImage = 'url("{{ "images/aws-user-group-logo.png" | absURL }}")';
+                                logoDiv.style.backgroundSize = 'contain';
+                                logoDiv.style.backgroundPosition = 'center';
+                                logoDiv.style.backgroundRepeat = 'no-repeat';
+                                logoDiv.style.margin = '0';
+                                
+                                cardHeader.appendChild(logoDiv);
+                            }
+                            
+                            // Add header to card
+                            card.appendChild(cardHeader);
+                            
+                            // Create card content with consistent height
+                            const cardContent = document.createElement('div');
+                            cardContent.className = 'card-content';
+                            cardContent.style.padding = '15px';
+                            cardContent.style.flexGrow = '1';
+                            cardContent.style.display = 'flex';
+                            cardContent.style.flexDirection = 'column';
+                            cardContent.style.alignItems = 'center';
+                            
+                            // Add group name
+                            const name = document.createElement('h3');
+                            name.className = 'card-title';
+                            name.style.color = 'var(--aws-purple)';
+                            name.style.margin = '0 0 10px 0';
+                            name.style.fontSize = '1.2rem';
+                            name.style.fontWeight = '600';
+                            name.style.textAlign = 'center';
+                            name.textContent = group.Name;
+                            cardContent.appendChild(name);
+                            
+                            // Add location
+                            const location = document.createElement('p');
+                            location.className = 'card-text';
+                            location.style.margin = '5px 0';
+                            location.style.fontSize = '0.9rem';
+                            location.style.lineHeight = '1.4';
+                            location.style.textAlign = 'center';
+                            location.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${group.Location}`;
+                            cardContent.appendChild(location);
+                            
+                            // Add members if available
+                            if (group.Members && group.Members !== '') {
+                                const members = document.createElement('p');
+                                members.className = 'card-text members-count';
+                                members.style.margin = '5px 0';
+                                members.style.fontSize = '0.9rem';
+                                members.style.lineHeight = '1.4';
+                                members.style.textAlign = 'center';
+                                members.innerHTML = `<i class="fas fa-users"></i> ${group.Members} members`;
+                                cardContent.appendChild(members);
+                            }
+                            
+                            // Add category if available
+                            if (group.Category && group.Category !== '') {
+                                const category = document.createElement('p');
+                                category.className = 'card-text category-tag';
+                                category.style.margin = '5px 0';
+                                category.style.fontSize = '0.9rem';
+                                category.style.lineHeight = '1.4';
+                                category.style.textAlign = 'center';
+                                category.innerHTML = `<i class="fas fa-tag"></i> ${group.Category}`;
+                                cardContent.appendChild(category);
+                            }
+                            
+                            // Add group link
+                            const link = document.createElement('a');
+                            link.href = group.URL;
+                            link.target = '_blank';
+                            link.className = 'card-link';
+                            link.style.color = 'var(--aws-purple)';
+                            link.style.display = 'inline-block';
+                            link.style.marginTop = '15px';
+                            link.style.textDecoration = 'none';
+                            link.style.fontWeight = '500';
+                            link.style.transition = 'color 0.2s ease';
+                            link.innerHTML = 'Visit Group <i class="fas fa-external-link-alt"></i>';
+                            cardContent.appendChild(link);
+                            
+                            // Add hover effect
+                            card.addEventListener('mouseenter', function() {
+                                this.style.transform = 'translateY(-5px)';
+                                this.style.boxShadow = '0 8px 16px rgba(0,0,0,0.2)'; // Enhanced hover shadow
+                            });
+                            
+                            card.addEventListener('mouseleave', function() {
+                                this.style.transform = 'translateY(0)';
+                                this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; // Match the default shadow
+                            });
+                            
+                            card.appendChild(cardContent);
+                            
+                            // Add card to container
+                            container.appendChild(card);
+                        });
+                        
+                        updatePagination();
+                    }
+                    
+                    // Update pagination controls
+                    function updatePagination() {
+                        const totalPages = Math.ceil(filteredGroups.length / itemsPerPage);
+                        const paginationContainer = document.getElementById('pagination');
+                        paginationContainer.innerHTML = '';
+                        
+                        // Previous button
+                        if (totalPages > 1) {
+                            const prevButton = document.createElement('button');
+                            prevButton.className = 'page-btn';
+                            prevButton.innerHTML = '&laquo;';
+                            prevButton.disabled = currentPage === 1;
+                            prevButton.addEventListener('click', () => {
+                                if (currentPage > 1) {
+                                    currentPage--;
+                                    displayGroups(currentPage);
+                                }
+                            });
+                            paginationContainer.appendChild(prevButton);
+                        }
+                        
+                        // Page buttons
+                        for (let i = 1; i <= totalPages; i++) {
+                            if (totalPages <= 10 || 
+                                i === 1 || 
+                                i === totalPages || 
+                                (i >= currentPage - 2 && i <= currentPage + 2)) {
+                                
+                                const pageButton = document.createElement('button');
+                                pageButton.className = 'page-btn';
+                                if (i === currentPage) {
+                                    pageButton.classList.add('active');
+                                }
+                                pageButton.textContent = i;
+                                pageButton.addEventListener('click', () => {
+                                    currentPage = i;
+                                    displayGroups(currentPage);
+                                });
+                                paginationContainer.appendChild(pageButton);
+                            } else if (
+                                (i === currentPage - 3 && currentPage > 3) || 
+                                (i === currentPage + 3 && currentPage < totalPages - 2)
+                            ) {
+                                const ellipsis = document.createElement('span');
+                                ellipsis.textContent = '...';
+                                ellipsis.style.margin = '0 8px';
+                                paginationContainer.appendChild(ellipsis);
+                            }
+                        }
+                        
+                        // Next button
+                        if (totalPages > 1) {
+                            const nextButton = document.createElement('button');
+                            nextButton.className = 'page-btn';
+                            nextButton.innerHTML = '&raquo;';
+                            nextButton.disabled = currentPage === totalPages;
+                            nextButton.addEventListener('click', () => {
+                                if (currentPage < totalPages) {
+                                    currentPage++;
+                                    displayGroups(currentPage);
+                                }
+                            });
+                            paginationContainer.appendChild(nextButton);
+                        }
+                    }
+                    
+                    // Filter groups by category or platform
+                    function filterGroups(filterType) {
+                        if (filterType === 'all') {
+                            filteredGroups = [...groups];
+                        } else if (filterType === 'women') {
+                            // Filter for women's groups - check name and category
+                            filteredGroups = groups.filter(group => {
+                                const nameMatch = group.Name && 
+                                    (group.Name.toLowerCase().includes('women') || 
+                                     group.Name.toLowerCase().includes('girl') || 
+                                     group.Name.toLowerCase().includes('female') || 
+                                     group.Name.toLowerCase().includes('flinta') || 
+                                     group.Name.toLowerCase().includes('ladies') ||
+                                     group.Name.toLowerCase().includes('buildher'));
+                                
+                                const categoryMatch = group.Category && 
+                                    (group.Category.toLowerCase().includes('women') || 
+                                     group.Category === "Women's User Groups");
+                                
+                                return nameMatch || categoryMatch;
+                            });
+                        } else if (filterType === 'large') {
+                            // Filter for groups with more than 1000 members
+                            filteredGroups = groups.filter(group => {
+                                if (!group.Members) return false;
+                                const members = parseInt(group.Members.replace(/,/g, ''));
+                                return !isNaN(members) && members > 1000;
+                            });
+                        } else if (filterType === 'meetup') {
+                            // Filter for groups on Meetup platform
+                            filteredGroups = groups.filter(group => 
+                                group.Platform && group.Platform.toLowerCase() === 'meetup'
+                            );
+                        } else if (filterType === 'ai-ml') {
+                            // Filter for AI/ML groups
+                            filteredGroups = groups.filter(group => 
+                                (group.Category && 
+                                 (group.Category.toLowerCase().includes('ai') || 
+                                  group.Category.toLowerCase().includes('ml') || 
+                                  group.Category.toLowerCase().includes('machine learning'))) ||
+                                (group.Name && 
+                                 (group.Name.toLowerCase().includes('ai') || 
+                                  group.Name.toLowerCase().includes('ml') || 
+                                  group.Name.toLowerCase().includes('machine learning')))
+                            );
+                        } else if (filterType === 'serverless') {
+                            // Filter for Serverless groups
+                            filteredGroups = groups.filter(group => 
+                                (group.Category && group.Category.toLowerCase().includes('serverless')) ||
+                                (group.Name && group.Name.toLowerCase().includes('serverless'))
+                            );
+                        }
+                        
+                        currentPage = 1;
+                        displayGroups(currentPage);
+                        updateStats(filteredGroups);
+                    }
+                    
+                    // Search groups
+                    function searchGroups(query) {
+                        query = query.toLowerCase();
+                        
+                        filteredGroups = groups.filter(group => {
+                            return (
+                                group.Name.toLowerCase().includes(query) ||
+                                group.Location.toLowerCase().includes(query) ||
+                                (group.Category && group.Category.toLowerCase().includes(query))
+                            );
+                        });
+                        
+                        currentPage = 1;
+                        displayGroups(currentPage);
+                        updateStats(filteredGroups);
+                    }
+                    
+                    // Add event listeners to filter buttons
+                    document.querySelectorAll('.filter-btn').forEach(button => {
+                        button.addEventListener('click', function() {
+                            document.querySelectorAll('.filter-btn').forEach(btn => {
+                                btn.classList.remove('active');
+                            });
+                            this.classList.add('active');
+                            filterGroups(this.dataset.category);
+                        });
+                    });
+                    
+                    // Add event listener to search input
+                    document.getElementById('search-input').addEventListener('input', function() {
+                        searchGroups(this.value);
+                    });
+                    
+                    // Update stats
+                    function updateStats(filteredData) {
+                        document.getElementById('total-user-groups').textContent = filteredData.length;
+                        
+                        // Count women's groups
+                        const womenGroups = groups.filter(group => {
+                            const nameMatch = group.Name && 
+                                (group.Name.toLowerCase().includes('women') || 
+                                 group.Name.toLowerCase().includes('girl') || 
+                                 group.Name.toLowerCase().includes('female') || 
+                                 group.Name.toLowerCase().includes('flinta') || 
+                                 group.Name.toLowerCase().includes('ladies') ||
+                                 group.Name.toLowerCase().includes('buildher'));
+                            
+                            const categoryMatch = group.Category && 
+                                (group.Category.toLowerCase().includes('women') || 
+                                 group.Category === "Women's User Groups");
+                            
+                            return nameMatch || categoryMatch;
+                        });
+                        
+                        document.getElementById('total-women-groups').textContent = womenGroups.length;
+                        
+                        // Count unique countries
+                        const countries = new Set();
+                        filteredData.forEach(group => {
+                            if (group.Location) {
+                                const country = group.Location.split(',').pop().trim();
+                                if (country) countries.add(country);
+                            }
+                        });
+                        document.getElementById('total-countries').textContent = countries.size;
+                    }
+                    
+                    // Initial display
+                    displayGroups(currentPage);
+                    updateStats(groups);
+                })
+                .catch(error => {
+                    console.error('Error loading User Groups data:', error);
+                    document.getElementById('loading').textContent = 'Error loading User Groups data. Please try again later.';
                 });
-                
-                this.classList.add('active');
-                
-                activeFilter = this.dataset.filter.toLowerCase();
-                filterUserGroups();
-            });
-        });
-    }
-    
-    // Filter user groups based on search term and region
-    function filterUserGroups() {
-        const searchTerm = document.getElementById('userGroupSearch').value.toLowerCase();
-        
-        filteredUserGroups = userGroups.filter(group => {
-            // Search term filter
-            const matchesSearch = 
-                (group.Name && group.Name.toLowerCase().includes(searchTerm)) ||
-                (group.Location && group.Location.toLowerCase().includes(searchTerm));
             
-            // Region/Continent filter
-            let matchesRegion = true;
-            if (activeFilter !== 'all') {
-                // Check if location contains the continent/region name
-                matchesRegion = group.Location && group.Location.toLowerCase().includes(activeFilter.toLowerCase());
+            // Helper function to parse CSV with proper handling of quoted fields
+            function parseCSV(text) {
+                const lines = text.split('\n');
+                const headers = lines[0].split(',').map(h => h.trim());
+                
+                console.log("CSV Headers:", headers); // Debug: Log headers
+                
+                return lines.slice(1).map(line => {
+                    if (!line.trim()) return null;
+                    
+                    // Handle quoted fields with commas
+                    const values = [];
+                    let inQuote = false;
+                    let currentValue = '';
+                    
+                    for (let i = 0; i < line.length; i++) {
+                        const char = line[i];
+                        
+                        if (char === '"' && (i === 0 || line[i-1] !== '\\')) {
+                            inQuote = !inQuote;
+                        } else if (char === ',' && !inQuote) {
+                            values.push(currentValue);
+                            currentValue = '';
+                        } else {
+                            currentValue += char;
+                        }
+                    }
+                    
+                    // Add the last value
+                    values.push(currentValue);
+                    
+                    const group = {};
+                    headers.forEach((header, i) => {
+                        // Remove quotes and trim
+                        let value = values[i] || '';
+                        if (value.startsWith('"') && value.endsWith('"')) {
+                            value = value.substring(1, value.length - 1);
+                        }
+                        group[header] = value.trim();
+                    });
+                    
+                    // Debug: Log if this group has a GroupImage
+                    if (group.Name && group.GroupImage) {
+                        console.log(`Group ${group.Name} has GroupImage: ${group.GroupImage}`);
+                    }
+                    
+                    // Validate latitude and longitude
+                    if (group.Latitude && group.Longitude) {
+                        const lat = parseFloat(group.Latitude);
+                        const lng = parseFloat(group.Longitude);
+                        
+                        if (isNaN(lat) || isNaN(lng)) {
+                            console.warn(`Invalid coordinates for ${group.Name}: ${group.Latitude}, ${group.Longitude}`);
+                            group.Latitude = null;
+                            group.Longitude = null;
+                        }
+                    }
+                    
+                    return group;
+                }).filter(group => group !== null);
             }
-            
-            return matchesSearch && matchesRegion;
         });
-        
-        currentPage = 1;
-        updateStats(filteredUserGroups);
-        renderUserGroups();
-    }
-}
-</script>
+    </script>
+</div>
 {{ end }}

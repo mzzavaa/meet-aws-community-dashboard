@@ -1,0 +1,677 @@
+{{ define "main" }}
+<div class="heroes-page">
+    {{ .Content }}
+    
+    <h1>AWS Heroes</h1>
+    
+    <div id="map" style="height: 500px;"></div>
+    
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-logo hero-logo"></div>
+            <div class="stat-number" id="total-heroes">0</div>
+            <div class="stat-label">AWS Heroes</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-logo hero-logo"></div>
+            <div class="stat-number" id="total-categories">0</div>
+            <div class="stat-label">Categories</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-logo hero-logo"></div>
+            <div class="stat-number" id="total-countries">0</div>
+            <div class="stat-label">Countries</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-logo interview-logo"></div>
+            <div class="stat-number" id="total-interviews">0</div>
+            <div class="stat-label">Interviews</div>
+        </div>
+    </div>
+    
+    <div class="search-container">
+        <input type="text" id="search-input" class="search-input" placeholder="Search by name, location, or category...">
+        
+        <div class="filters">
+            <button class="filter-btn active" data-category="all">All Categories</button>
+            <button class="filter-btn" data-category="Serverless">Serverless</button>
+            <button class="filter-btn" data-category="Container">Container</button>
+            <button class="filter-btn" data-category="Machine Learning">Machine Learning</button>
+            <button class="filter-btn" data-category="Data">Data</button>
+            <button class="filter-btn" data-category="DevOps">DevOps</button>
+            <button class="filter-btn" data-category="Security">Security</button>
+            <button class="filter-btn" data-category="Community">Community</button>
+            <button class="filter-btn" data-category="Storage">Storage</button>
+            <button class="filter-btn" data-category="Networking">Networking</button>
+        </div>
+    </div>
+    
+    <div id="heroes-container" class="grid"></div>
+    
+    <div class="pagination" id="pagination"></div>
+    
+    <div id="loading" class="loading">
+        <i class="fas fa-spinner fa-spin"></i> Loading AWS Heroes...
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the map
+            const map = L.map('map').setView([20, 0], 2);
+            
+            // Add the tile layer (OpenStreetMap)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Custom orange icon for markers
+            const orangeIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+            
+            // Use the CSV URL directly
+            const heroesCSV = "/data/aws_heroes_final_clean.csv";
+            console.log("Loading AWS Heroes from:", heroesCSV);
+            
+            // Load heroes data
+            fetch(heroesCSV)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(csvText => {
+                    // Parse CSV
+                    const heroes = parseCSV(csvText);
+                    
+                    // Hide loading indicator
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    // Add a test video URL to heroes with "done" status for testing
+                    heroes.forEach(hero => {
+                        if (hero.Status && hero.Status.toLowerCase() === 'done' && !hero.Video) {
+                            hero.Video = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+                            console.log('Added test video URL to hero:', hero.Name);
+                        }
+                    });
+                    
+                    // Create marker cluster group
+                    const markerCluster = L.markerClusterGroup({
+                        maxClusterRadius: 50,
+                        spiderfyOnMaxZoom: true,
+                        showCoverageOnHover: true,
+                        zoomToBoundsOnClick: true,
+                        iconCreateFunction: function(cluster) {
+                            const count = cluster.getChildCount();
+                            // Calculate color intensity based on count
+                            let color;
+                            if (count < 10) {
+                                color = '#FF9900'; // Light orange
+                            } else if (count < 25) {
+                                color = '#F57C00'; // Medium orange
+                            } else if (count < 50) {
+                                color = '#E65100'; // Darker orange
+                            } else {
+                                color = '#BF360C'; // Very dark orange
+                            }
+                            
+                            return L.divIcon({
+                                html: `<div style="background-color: ${color}; color: white; border-radius: 50%; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: bold;">${count}</div>`,
+                                className: 'marker-cluster',
+                                iconSize: L.point(40, 40)
+                            });
+                        }
+                    });
+                    
+                    // Add markers to the cluster
+                    heroes.forEach(hero => {
+                        if (hero.Latitude && hero.Longitude) {
+                            const marker = L.marker([hero.Latitude, hero.Longitude], { icon: orangeIcon });
+                            
+                            // Create popup content
+                            let popupContent = `
+                                <div class="map-popup">
+                                    <div class="map-popup-header hero-popup-header">
+                                        <h3>${hero.Name}</h3>
+                                    </div>
+                                    <div class="map-popup-content">
+                            `;
+                            
+                            // Add hero image if available
+                            if (hero.ImageURL) {
+                                popupContent += `<img src="${hero.ImageURL}" alt="${hero.Name}">`;
+                            } else if (hero.Image) {
+                                popupContent += `<img src="${hero.Image}" alt="${hero.Name}">`;
+                            } else if (hero['Image URL']) {
+                                popupContent += `<img src="${hero['Image URL']}" alt="${hero.Name}">`;
+                            } else {
+                                popupContent += `<div class="map-popup-logo hero-logo"></div>`;
+                            }
+                            
+                            // Add interview status if available
+                            if (hero.Status) {
+                                let statusClass = '';
+                                let statusIcon = '';
+                                
+                                switch(hero.Status.toLowerCase()) {
+                                    case 'done':
+                                        statusClass = 'status-done';
+                                        statusIcon = 'video';
+                                        break;
+                                    case 'next up':
+                                        statusClass = 'status-next-up';
+                                        statusIcon = 'calendar-check';
+                                        break;
+                                    case 'in progress':
+                                        statusClass = 'status-in-progress';
+                                        statusIcon = 'spinner fa-spin';
+                                        break;
+                                    case 'scheduled':
+                                        statusClass = 'status-scheduled';
+                                        statusIcon = 'calendar-check';
+                                        break;
+                                    default:
+                                        statusClass = 'status-other';
+                                        statusIcon = 'info-circle';
+                                }
+                                
+                                popupContent += `
+                                    <div class="interview-status ${statusClass}">
+                                        <i class="fas fa-${statusIcon}"></i> ${hero.Status}
+                                    </div>
+                                `;
+                                
+                                // Add interview link if status is done
+                                if (hero.Status.toLowerCase() === 'done') {
+                                    const heroSlug = hero.Name.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, '-');
+                                    popupContent += `
+                                        <div class="interview-link">
+                                            <a href="{{ .Site.BaseURL }}interviews/${heroSlug}/" target="_blank">
+                                                <i class="fas fa-file-alt"></i> View Interview
+                                            </a>
+                                        </div>
+                                    `;
+                                }
+                            }
+                            
+                            popupContent += `
+                                        <p><strong>Location:</strong> ${hero.Location}</p>
+                                        <p><strong>Category:</strong> ${hero.Category}</p>
+                                        <a href="${hero.BioURL}" target="_blank" class="heroes-page">View Profile <i class="fas fa-arrow-right"></i></a>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            marker.bindPopup(popupContent, { className: 'custom-popup' });
+                            markerCluster.addLayer(marker);
+                        }
+                    });
+                    
+                    // Add interview filters
+                    const searchContainer = document.querySelector('.search-container');
+                    if (searchContainer && !document.querySelector('.interview-filters')) {
+                        const interviewFiltersDiv = document.createElement('div');
+                        interviewFiltersDiv.className = 'filters interview-filters';
+                        interviewFiltersDiv.innerHTML = `
+                            <button class="filter-btn active" data-interview-filter="all">All Interview Status</button>
+                            <button class="filter-btn" data-interview-filter="done">Interview Available</button>
+                            <button class="filter-btn" data-interview-filter="scheduled">Interview Scheduled</button>
+                            <button class="filter-btn" data-interview-filter="next up">Interview In Planning</button>
+                            <button class="filter-btn" data-interview-filter="in progress">Interview In Progress</button>
+                        `;
+                        searchContainer.appendChild(interviewFiltersDiv);
+                    }
+                    
+                    // Add the marker cluster to the map
+                    map.addLayer(markerCluster);
+                    
+                    // Initialize pagination
+                    const itemsPerPage = 12;
+                    let currentPage = 1;
+                    let filteredHeroes = [...heroes];
+                    let activeCategory = 'all';
+                    let activeInterviewFilter = 'all';
+                    
+                    // Display heroes with pagination
+                    function displayHeroes(page) {
+                        const container = document.getElementById('heroes-container');
+                        container.innerHTML = '';
+                        
+                        const start = (page - 1) * itemsPerPage;
+                        const end = start + itemsPerPage;
+                        const paginatedHeroes = filteredHeroes.slice(start, end);
+                        
+                        paginatedHeroes.forEach(hero => {
+                            const card = document.createElement('div');
+                            card.className = 'hero-card';
+                            
+                            // Create card header for image
+                            const cardHeader = document.createElement('div');
+                            cardHeader.className = 'card-header';
+                            
+                            // Check if this is a hero with a video first
+                            let hasVideoPreview = false;
+                            if (hero.Status && hero.Status.toLowerCase() === 'done') {
+                                // Check for video URL in different possible properties
+                                const videoUrl = hero.Video || hero.VideoURL || hero.video || hero.videoUrl || '';
+                                
+                                if (videoUrl) {
+                                    console.log('Found video URL:', videoUrl, 'for hero:', hero.Name);
+                                    // Get YouTube thumbnail from video URL
+                                    let videoId = '';
+                                    if (videoUrl.includes('youtube.com')) {
+                                        videoId = videoUrl.split('v=')[1];
+                                        if (videoId && videoId.includes('&')) {
+                                            videoId = videoId.split('&')[0];
+                                        }
+                                    } else if (videoUrl.includes('youtu.be')) {
+                                        videoId = videoUrl.split('/').pop();
+                                    }
+                                    
+                                    if (videoId) {
+                                        console.log('Found video ID:', videoId);
+                                        hasVideoPreview = true;
+                                        
+                                        // Create video preview
+                                        const videoPreview = document.createElement('div');
+                                        videoPreview.className = 'video-preview';
+                                        videoPreview.style.margin = '0';
+                                        videoPreview.style.borderRadius = '8px 8px 0 0';
+                                        
+                                        const thumbnail = document.createElement('div');
+                                        thumbnail.className = 'video-thumbnail';
+                                        thumbnail.style.backgroundImage = `url('https://img.youtube.com/vi/${videoId}/mqdefault.jpg')`;
+                                        
+                                        const playButton = document.createElement('div');
+                                        playButton.className = 'play-button';
+                                        playButton.innerHTML = '<i class="fas fa-play play-icon"></i>';
+                                        
+                                        thumbnail.appendChild(playButton);
+                                        videoPreview.appendChild(thumbnail);
+                                        
+                                        // Make the entire video preview clickable
+                                        videoPreview.addEventListener('click', function() {
+                                            window.open(videoUrl, '_blank');
+                                        });
+                                        
+                                        cardHeader.appendChild(videoPreview);
+                                    }
+                                }
+                            }
+                            
+                            // Only add regular image if we don't have a video preview
+                            if (!hasVideoPreview) {
+                                if (hero.ImageURL) {
+                                    const imageContainer = document.createElement('div');
+                                    imageContainer.className = 'hero-avatar';
+                                    
+                                    const image = document.createElement('img');
+                                    image.src = hero.ImageURL;
+                                    image.alt = hero.Name;
+                                    
+                                    imageContainer.appendChild(image);
+                                    cardHeader.appendChild(imageContainer);
+                                } else if (hero.Image) {
+                                    const imageContainer = document.createElement('div');
+                                    imageContainer.className = 'hero-avatar';
+                                    
+                                    const image = document.createElement('img');
+                                    image.src = hero.Image;
+                                    image.alt = hero.Name;
+                                    
+                                    imageContainer.appendChild(image);
+                                    cardHeader.appendChild(imageContainer);
+                                } else if (hero['Image URL']) {
+                                    const imageContainer = document.createElement('div');
+                                    imageContainer.className = 'hero-avatar';
+                                    
+                                    const image = document.createElement('img');
+                                    image.src = hero['Image URL'];
+                                    image.alt = hero.Name;
+                                    
+                                    imageContainer.appendChild(image);
+                                    cardHeader.appendChild(imageContainer);
+                                } else {
+                                    // Add hero logo if no image
+                                    const logoDiv = document.createElement('div');
+                                    logoDiv.className = 'card-logo hero-logo';
+                                    cardHeader.appendChild(logoDiv);
+                                }
+                            }
+                            
+                            card.appendChild(cardHeader);
+                            
+                            const cardContent = document.createElement('div');
+                            cardContent.className = 'card-content';
+                            
+                            // Add hero name
+                            const name = document.createElement('h3');
+                            name.className = 'card-title';
+                            name.textContent = hero.Name;
+                            cardContent.appendChild(name);
+                            
+                            // Add status if available
+                            if (hero.Status) {
+                                let statusClass = '';
+                                let statusIcon = '';
+                                
+                                switch(hero.Status.toLowerCase()) {
+                                    case 'done':
+                                        statusClass = 'status-done';
+                                        statusIcon = 'video';
+                                        break;
+                                    case 'next up':
+                                        statusClass = 'status-next-up';
+                                        statusIcon = 'calendar-check';
+                                        break;
+                                    case 'in progress':
+                                        statusClass = 'status-in-progress';
+                                        statusIcon = 'spinner fa-spin';
+                                        break;
+                                    case 'scheduled':
+                                        statusClass = 'status-scheduled';
+                                        statusIcon = 'calendar-check';
+                                        break;
+                                    default:
+                                        statusClass = 'status-other';
+                                        statusIcon = 'info-circle';
+                                }
+                                
+                                const status = document.createElement('div');
+                                status.className = `interview-status ${statusClass}`;
+                                status.innerHTML = `<i class="fas fa-${statusIcon}"></i> ${hero.Status}`;
+                                cardContent.appendChild(status);
+                                
+                                // Add interview badge if status is done
+                                if (hero.Status && hero.Status.toLowerCase() === 'done') {
+                                    // Check for video URL in different possible properties
+                                    const videoUrl = hero.Video || hero.VideoURL || hero.video || hero.videoUrl || '';
+                                    
+                                    if (videoUrl) {
+                                        // Create a slug from the hero name for the interview link
+                                        const heroSlug = hero.Name.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, '-');
+                                        
+                                        const badge = document.createElement('div');
+                                        badge.className = 'interview-badge';
+                                        badge.innerHTML = `
+                                            <a href="{{ .Site.BaseURL }}interviews/${heroSlug}/" target="_blank">
+                                                <i class="fas fa-video"></i> Interview Available
+                                            </a>
+                                        `;
+                                        cardContent.appendChild(badge);
+                                    }
+                                }
+                            }
+                            
+                            // Add card description if available
+                            if (hero.Description) {
+                                const description = document.createElement('p');
+                                description.className = 'card-description';
+                                description.textContent = hero.Description;
+                                cardContent.appendChild(description);
+                            }
+                            
+                            // Add location
+                            const location = document.createElement('p');
+                            location.className = 'card-text';
+                            location.innerHTML = `<strong>Location:</strong> ${hero.Location}`;
+                            cardContent.appendChild(location);
+                            
+                            // Add category
+                            const category = document.createElement('p');
+                            category.className = 'card-text';
+                            category.innerHTML = `<strong>Category:</strong> ${hero.Category}`;
+                            cardContent.appendChild(category);
+                            
+                            // Add profile link
+                            const link = document.createElement('a');
+                            link.href = hero.BioURL;
+                            link.target = '_blank';
+                            link.className = 'card-link';
+                            link.innerHTML = 'View Profile <i class="fas fa-arrow-right"></i>';
+                            cardContent.appendChild(link);
+                            
+                            card.appendChild(cardContent);
+                            container.appendChild(card);
+                        });
+                        
+                        updatePagination();
+                    }
+                    
+                    // Update pagination controls
+                    function updatePagination() {
+                        const totalPages = Math.ceil(filteredHeroes.length / itemsPerPage);
+                        const paginationContainer = document.getElementById('pagination');
+                        paginationContainer.innerHTML = '';
+                        
+                        // Previous button
+                        if (totalPages > 1) {
+                            const prevButton = document.createElement('button');
+                            prevButton.className = 'page-btn';
+                            prevButton.innerHTML = '&laquo;';
+                            prevButton.disabled = currentPage === 1;
+                            prevButton.addEventListener('click', () => {
+                                if (currentPage > 1) {
+                                    currentPage--;
+                                    displayHeroes(currentPage);
+                                }
+                            });
+                            paginationContainer.appendChild(prevButton);
+                        }
+                        
+                        // Page buttons
+                        for (let i = 1; i <= totalPages; i++) {
+                            if (totalPages <= 10 || 
+                                i === 1 || 
+                                i === totalPages || 
+                                (i >= currentPage - 2 && i <= currentPage + 2)) {
+                                
+                                const pageButton = document.createElement('button');
+                                pageButton.className = 'page-btn';
+                                if (i === currentPage) {
+                                    pageButton.classList.add('active');
+                                }
+                                pageButton.textContent = i;
+                                pageButton.addEventListener('click', () => {
+                                    currentPage = i;
+                                    displayHeroes(currentPage);
+                                });
+                                paginationContainer.appendChild(pageButton);
+                            } else if (
+                                (i === currentPage - 3 && currentPage > 3) || 
+                                (i === currentPage + 3 && currentPage < totalPages - 2)
+                            ) {
+                                const ellipsis = document.createElement('span');
+                                ellipsis.textContent = '...';
+                                ellipsis.style.margin = '0 8px';
+                                paginationContainer.appendChild(ellipsis);
+                            }
+                        }
+                        
+                        // Next button
+                        if (totalPages > 1) {
+                            const nextButton = document.createElement('button');
+                            nextButton.className = 'page-btn';
+                            nextButton.innerHTML = '&raquo;';
+                            nextButton.disabled = currentPage === totalPages;
+                            nextButton.addEventListener('click', () => {
+                                if (currentPage < totalPages) {
+                                    currentPage++;
+                                    displayHeroes(currentPage);
+                                }
+                            });
+                            paginationContainer.appendChild(nextButton);
+                        }
+                    }
+                    
+                    // Filter heroes by category
+                    function filterHeroes(category) {
+                        activeCategory = category;
+                        applyFilters();
+                    }
+                    
+                    // Filter heroes by interview status
+                    function filterHeroesByInterviewStatus(status) {
+                        activeInterviewFilter = status;
+                        applyFilters();
+                    }
+                    
+                    // Apply both category and interview filters
+                    function applyFilters() {
+                        filteredHeroes = heroes.filter(hero => {
+                            // Apply category filter
+                            const categoryMatch = activeCategory === 'all' || 
+                                (hero.Category && hero.Category.includes(activeCategory));
+                            
+                            // Apply interview filter
+                            const interviewMatch = activeInterviewFilter === 'all' || 
+                                (hero.Status && hero.Status.toLowerCase() === activeInterviewFilter);
+                            
+                            return categoryMatch && interviewMatch;
+                        });
+                        
+                        currentPage = 1;
+                        displayHeroes(currentPage);
+                    }
+                    
+                    // Search heroes
+                    function searchHeroes(query) {
+                        query = query.toLowerCase();
+                        
+                        filteredHeroes = heroes.filter(hero => {
+                            return (
+                                hero.Name.toLowerCase().includes(query) ||
+                                hero.Location.toLowerCase().includes(query) ||
+                                (hero.Category && hero.Category.toLowerCase().includes(query)) ||
+                                (hero.Status && hero.Status.toLowerCase().includes(query))
+                            );
+                        });
+                        
+                        currentPage = 1;
+                        displayHeroes(currentPage);
+                    }
+                    
+                    // Add event listeners to category filter buttons
+                    document.querySelectorAll('.filter-btn[data-category]').forEach(button => {
+                        button.addEventListener('click', function() {
+                            document.querySelectorAll('.filter-btn[data-category]').forEach(btn => {
+                                btn.classList.remove('active');
+                            });
+                            this.classList.add('active');
+                            filterHeroes(this.dataset.category);
+                        });
+                    });
+                    
+                    // Add event listeners to interview filter buttons
+                    document.querySelectorAll('.filter-btn[data-interview-filter]').forEach(button => {
+                        button.addEventListener('click', function() {
+                            document.querySelectorAll('.filter-btn[data-interview-filter]').forEach(btn => {
+                                btn.classList.remove('active');
+                            });
+                            this.classList.add('active');
+                            filterHeroesByInterviewStatus(this.dataset.interviewFilter);
+                        });
+                    });
+                    
+                    // Add event listener to search input
+                    document.getElementById('search-input').addEventListener('input', function() {
+                        searchHeroes(this.value);
+                    });
+                    
+                    // Debug: Log a sample hero object to see its structure
+                    if (heroes.length > 0) {
+                        console.log('Sample hero object:', heroes[0]);
+                        
+                        // Check if any heroes have video URLs
+                        const heroesWithVideos = heroes.filter(hero => 
+                            hero.Video || hero.VideoURL || hero.video || hero.videoUrl
+                        );
+                        
+                        if (heroesWithVideos.length > 0) {
+                            console.log('Found heroes with videos:', heroesWithVideos.length);
+                            console.log('First hero with video:', heroesWithVideos[0]);
+                        } else {
+                            console.log('No heroes with videos found');
+                        }
+                    }
+                    
+                    // Initial display
+                    displayHeroes(currentPage);
+                })
+                .catch(error => {
+                    console.error('Error loading AWS Heroes data:', error);
+                    document.getElementById('loading').textContent = 'Error loading AWS Heroes data. Please try again later.';
+                });
+            
+            // Helper function to parse CSV with proper handling of quoted fields
+            function parseCSV(text) {
+                console.log("Parsing CSV...");
+                const lines = text.split('\n');
+                console.log("CSV lines count:", lines.length);
+                
+                if (lines.length <= 1) {
+                    console.error("CSV has no data rows!");
+                    return [];
+                }
+                
+                const headers = lines[0].split(',').map(h => h.trim());
+                console.log("CSV headers:", headers);
+                
+                const heroes = [];
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+                    
+                    // Handle quoted fields with commas
+                    const values = [];
+                    let inQuote = false;
+                    let currentValue = '';
+                    
+                    for (let j = 0; j < line.length; j++) {
+                        const char = line[j];
+                        
+                        if (char === '"' && (j === 0 || line[j-1] !== '\\')) {
+                            inQuote = !inQuote;
+                        } else if (char === ',' && !inQuote) {
+                            values.push(currentValue);
+                            currentValue = '';
+                        } else {
+                            currentValue += char;
+                        }
+                    }
+                    
+                    // Add the last value
+                    values.push(currentValue);
+                    
+                    if (values.length < headers.length) {
+                        console.warn(`Line ${i} has fewer values (${values.length}) than headers (${headers.length}), skipping:`, line);
+                        continue;
+                    }
+                    
+                    const hero = {};
+                    headers.forEach((header, j) => {
+                        // Remove quotes and trim
+                        let value = values[j] || '';
+                        if (value.startsWith('"') && value.endsWith('"')) {
+                            value = value.substring(1, value.length - 1);
+                        }
+                        hero[header] = value.trim();
+                    });
+                    
+                    heroes.push(hero);
+                }
+                
+                console.log(`Successfully parsed ${heroes.length} heroes`);
+                return heroes;
+            }
+        });
+    </script>
+</div>
+{{ end }}

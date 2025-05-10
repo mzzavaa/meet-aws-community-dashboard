@@ -46,30 +46,56 @@
     }
   ],
   "communityBuilders": [
-    {
-      "name": "A.T.M Ruhul Amin",
-      "location": "Dhaka, Bangladesh",
-      "category": "Front-End Web & Mobile Builder since 2023",
-      "bioUrl": "https://www.linkedin.com/in/atmruhulamin",
-      "latitude": 23.8202931,
-      "longitude": 90.3710408
-    },
-    {
-      "name": "Aarfah Ahmad",
-      "location": "India",
-      "category": "Serverless Builder since 2023",
-      "bioUrl": "No URL",
-      "latitude": 22.3511148,
-      "longitude": 78.6677428
-    },
-    {
-      "name": "Aaron Lieberman",
-      "location": "Denver, USA",
-      "category": "Serverless Builder since 2021",
-      "bioUrl": "https://www.linkedin.com/in/aaron-lieberman-8a89bb46/",
-      "latitude": 39.7392364,
-      "longitude": -104.984862
-    }
+    [
+      {
+        "name": "Dmytro Hlotenko",
+        "location": "Vienna, Austria",
+        "category": "Cloud Operations Builder since 2024",
+        "bioUrl": "https://www.linkedin.com/in/dmytro-hlotenko-7aa348151/",
+        "latitude": 48.2083537,
+        "longitude": 16.3725042
+      },
+      {
+        "name": "Raphael Bottino",
+        "location": "Fort Worth, USA",
+        "category": "Dev Tools Builder since 2022",
+        "bioUrl": "https://raphabot.com",
+        "latitude": 32.753177,
+        "longitude": -97.3327459
+      },
+      {
+        "name": "Raphael Gab-Momoh",
+        "location": "Abuja, Nigeria",
+        "category": "Dev Tools Builder since 2022",
+        "bioUrl": "No URL",
+        "latitude": 9.0643305,
+        "longitude": 7.4892974
+      },
+      {
+        "name": "Raphael Manke",
+        "location": "Karlsruhe, Germany",
+        "category": "Serverless Builder since 2024",
+        "bioUrl": "https://www.linkedin.com/in/raphael-manke-a61912114/",
+        "latitude": 49.0068705,
+        "longitude": 8.4034195
+      },
+      {
+        "name": "Raphael Moura",
+        "location": "Goiânia, Brazil",
+        "category": "Serverless Builder since 2021",
+        "bioUrl": "https://www.linkedin.com/in/raphamoura/",
+        "latitude": -16.680882,
+        "longitude": -49.2532691
+      },
+      {
+        "name": "Suzana Melo Moraes",
+        "location": "Sweden (previously New Zealand)",
+        "category": "Dev Tools Builder since 2023",
+        "bioUrl": "https://www.linkedin.com/in/suzanamelomoraes/",
+        "latitude": 60.128161,
+        "longitude": 18.643501
+      }
+    ]    
   ],
   "userGroups": [
     {
@@ -80,16 +106,26 @@
       "organizer": "Chris Williams"
     },
     {
-      "name": "AWS Timisoara",
-      "location": "Timisoara, Romania",
-      "url": "https://www.meetup.com/aws-timisoara",
-      "category": "General AWS User Groups"
+      "name": "AWS Vienna User Group",
+      "location": "Vienna, Austria",
+      "url": "https://www.meetup.com/amazon-web-services-aws-vienna/",
+      "category": "General AWS User Groups",
+      "organizers": ["Linda", "Philipp", "Dmytro", "Roman", "Jakob"]
     },
     {
-      "name": "IASI AWS User Group",
-      "location": "Iasi, Romania",
-      "url": "https://www.meetup.com/aws-ro/",
-      "category": "General AWS User Groups"
+      "name": "AWS Kosice User Group",
+      "location": "Kosice, Slovakia",
+      "url": "https://www.meetup.com/aws-user-group-kosice/",
+      "category": "General AWS User Groups",
+      "organizers": ["Lydia", "Michal"]
+    }
+    ,
+    {
+      "name": "AWS Women's User Group Berlin",
+      "location": "Berlin, Germany",
+      "url": "https://www.meetup.com/berlin-amazon-web-services-meetup-group/",
+      "category": "Women's AWS User Groups",
+      "organizers": ["Sana", "Ruth", "Linda"]
     }
   ],
   "interviews": [

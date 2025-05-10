@@ -4,12 +4,13 @@
 <link rel="stylesheet" href="{{ "css/community-components.css" | absURL }}">
 
 <div class="content">
-    <div id="map"></div>
 
     <h1>{{ .Title }}</h1>
-    <p>{{ .Description }}</p>
     
     {{ .Content }}
+
+    <div id="map"></div>
+
 
     <div class="stats">
         <div class="stat-card">
@@ -227,9 +228,44 @@ function initializeUI(heroes, map) {
     
     // Function to add markers to the map
     function addMarkersToMap(heroes, map) {
+        // Custom orange icon for markers
+        const orangeIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+        
         let markerGroup;
         try {
-            markerGroup = L.markerClusterGroup();
+            markerGroup = L.markerClusterGroup({
+                maxClusterRadius: 50,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: true,
+                zoomToBoundsOnClick: true,
+                iconCreateFunction: function(cluster) {
+                    const count = cluster.getChildCount();
+                    // Calculate color intensity based on count
+                    let color;
+                    if (count < 10) {
+                        color = '#FF9900'; // Light orange
+                    } else if (count < 25) {
+                        color = '#F57C00'; // Medium orange
+                    } else if (count < 50) {
+                        color = '#E65100'; // Darker orange
+                    } else {
+                        color = '#BF360C'; // Very dark orange
+                    }
+                    
+                    return L.divIcon({
+                        html: `<div style="background-color: ${color}; color: white; border-radius: 50%; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: bold;">${count}</div>`,
+                        className: 'marker-cluster',
+                        iconSize: L.point(40, 40)
+                    });
+                }
+            });
         } catch (e) {
             console.warn('MarkerCluster plugin not found, using standard markers');
             markerGroup = L.layerGroup();
@@ -241,11 +277,11 @@ function initializeUI(heroes, map) {
                 const lng = parseFloat(hero.Longitude);
                 
                 if (!isNaN(lat) && !isNaN(lng)) {
-                    const marker = L.marker([lat, lng]);
+                    const marker = L.marker([lat, lng], { icon: orangeIcon });
                     
                     let imageHtml = '';
                     if (hero['Image URL']) {
-                        imageHtml = `<img src="${hero['Image URL']}" alt="${hero.Name}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin: 0 auto; display: block; border: 3px solid white;">`;
+                        imageHtml = `<img src="${hero['Image URL']}" alt="${hero.Name}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin: 0 auto; display: block; border: 3px solid #FF9900;">`;
                     }
                     
                     // Add interview status to popup if available
@@ -308,9 +344,9 @@ function initializeUI(heroes, map) {
                     }
                     
                     const popupContent = `
-                        <div style="text-align: center; padding: 10px;">
+                        <div class="hero-popup-content" style="text-align: center; padding: 10px;">
                             ${imageHtml}
-                            <h3 style="color:black">${hero.Name}</h3>
+                            <h3>${hero.Name}</h3>
                             <p><strong>Location:</strong> ${hero.Location}</p>
                             <p><strong>Category:</strong> ${hero.Category}</p>
                             <p><a href="${hero['Bio URL']}" target="_blank">View Profile</a></p>

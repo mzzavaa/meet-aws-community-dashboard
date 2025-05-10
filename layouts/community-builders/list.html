@@ -1,59 +1,10 @@
 {{ define "main" }}
-{{ $buildersCSV := "data/community_builders_complete.csv" | absURL }}
-
-<style>
-/* Override filter button styles specifically for community builders page */
-.community-builders-page .filter-btn {
-    border: 1px solid var(--aws-light-blue);
-    background-color: transparent;
-    color: var(--card-text);
-    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
-}
-
-.community-builders-page .filter-btn:hover {
-    background-color: rgba(26, 115, 232, 0.1);
-    color: var(--aws-light-blue);
-    border-color: var(--aws-light-blue);
-}
-
-.community-builders-page .filter-btn.active {
-    background-color: var(--aws-light-blue) !important;
-    color: white !important;
-    border-color: var(--aws-light-blue) !important;
-}
-
-/* Override pagination button styles */
-.community-builders-page .page-btn.active {
-    background-color: var(--aws-light-blue) !important;
-    color: white !important;
-}
-</style>
-
 <div class="community-builders-page">
+    {{ .Content }}
     
     <h1>AWS Community Builders</h1>
-    {{ .Content }}
-
     
-    <div id="map" style="height: 400px;"></div>
-    
-    <div class="stats">
-        <div class="stat-card">
-            <div class="stat-logo builder-logo"></div>
-            <div class="stat-number" id="total-builders" style="color: var(--aws-light-blue);">0</div>
-            <div class="stat-label">Community Builders</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-logo builder-logo"></div>
-            <div class="stat-number" id="total-categories" style="color: var(--aws-light-blue);">0</div>
-            <div class="stat-label">Categories</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-logo builder-logo"></div>
-            <div class="stat-number" id="total-countries" style="color: var(--aws-light-blue);">0</div>
-            <div class="stat-label">Countries</div>
-        </div>
-    </div>
+    <div id="map" style="height: 500px;"></div>
     
     <div class="search-container">
         <input type="text" id="search-input" class="search-input" placeholder="Search by name, location, or category...">
@@ -64,9 +15,11 @@
             <button class="filter-btn" data-category="Containers">Containers</button>
             <button class="filter-btn" data-category="Machine Learning">Machine Learning</button>
             <button class="filter-btn" data-category="Data">Data</button>
+            <button class="filter-btn" data-category="DevOps">DevOps</button>
             <button class="filter-btn" data-category="Security">Security</button>
             <button class="filter-btn" data-category="Networking">Networking</button>
             <button class="filter-btn" data-category="Storage">Storage</button>
+            <button class="filter-btn" data-category="Front-end Web & Mobile">Front-end Web & Mobile</button>
         </div>
     </div>
     
@@ -98,34 +51,12 @@
                 shadowSize: [41, 41]
             });
             
-            // Function to slightly offset markers at the same location
-            function offsetMarker(lat, lng, collection) {
-                // Check if there are other markers at the same location
-                const sameLocationMarkers = collection.filter(item => 
-                    Math.abs(item.lat - lat) < 0.01 && Math.abs(item.lng - lng) < 0.01
-                );
-                
-                if (sameLocationMarkers.length > 0) {
-                    // Add a small offset
-                    const offset = 0.01 * sameLocationMarkers.length;
-                    return {
-                        lat: lat + offset,
-                        lng: lng + offset
-                    };
-                }
-                
-                return { lat, lng };
-            }
-            
-            // Collection to track marker positions
-            const builderMarkers = [];
-            
-            // Use the CSV URL from Hugo
-            const buildersUrl = "{{ $buildersCSV }}";
-            console.log("Loading AWS Community Builders from:", buildersUrl);
+            // Use the CSV URL directly
+            const buildersCSV = "/data/aws_community_builders.csv";
+            console.log("Loading AWS Community Builders from:", buildersCSV);
             
             // Load community builders data
-            fetch(buildersUrl)
+            fetch(buildersCSV)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -170,34 +101,23 @@
                     // Add markers to the cluster
                     builders.forEach(builder => {
                         if (builder.Latitude && builder.Longitude) {
-                            const lat = parseFloat(builder.Latitude);
-                            const lng = parseFloat(builder.Longitude);
+                            const marker = L.marker([builder.Latitude, builder.Longitude], { icon: blueIcon });
                             
-                            if (!isNaN(lat) && !isNaN(lng)) {
-                                // Apply offset if needed
-                                const position = offsetMarker(lat, lng, builderMarkers);
-                                builderMarkers.push(position);
-                                
-                                const marker = L.marker([position.lat, position.lng], {
-                                    icon: blueIcon
-                                });
-                                
-                                marker.bindPopup(`
-                                    <div style="padding: 15px; background-color: var(--popup-bg); color: var(--popup-text); border-radius: 8px;">
-                                        <h3 style="margin-top: 0; margin-bottom: 15px; color: var(--popup-text); text-align: center;">${builder.Name}</h3>
-                                        <div class="map-popup-logo builder-logo" style="margin-bottom: 15px;"></div>
-                                        <p style="margin: 8px 0; color: var(--popup-text);"><i class="fas fa-map-marker-alt"></i> ${builder.Location}</p>
-                                        <p style="margin: 8px 0; color: var(--popup-text);"><i class="fas fa-tag"></i> ${builder.Category}</p>
-                                        <a href="${builder.BioURL || builder['Bio URL']}" target="_blank" style="display: inline-block; margin-top: 10px; color: var(--aws-light-blue);">View Profile <i class="fas fa-external-link-alt"></i></a>
+                            marker.bindPopup(`
+                                <div class="map-popup">
+                                    <div class="map-popup-header builder-popup-header">
+                                        <h3>${builder.Name}</h3>
                                     </div>
-                                `, { 
-                                    className: 'custom-popup builder-popup',
-                                    minWidth: 200,
-                                    maxWidth: 250
-                                });
-                                
-                                markerCluster.addLayer(marker);
-                            }
+                                    <div class="map-popup-content">
+                                        <div class="map-popup-logo builder-popup-logo"></div>
+                                        <p><strong>Location:</strong> ${builder.Location}</p>
+                                        <p><strong>Category:</strong> ${builder.Category}</p>
+                                        <a href="${builder.BioURL}" target="_blank" style="color: #1A73E8;">View Profile <i class="fas fa-external-link-alt"></i></a>
+                                    </div>
+                                </div>
+                            `);
+                            
+                            markerCluster.addLayer(marker);
                         }
                     });
                     
@@ -221,15 +141,9 @@
                         paginatedBuilders.forEach(builder => {
                             const card = document.createElement('div');
                             card.className = 'card';
-                            card.style.borderTop = '3px solid var(--aws-light-blue)';
                             
                             const cardContent = document.createElement('div');
                             cardContent.className = 'card-content';
-                            
-                            // Add builder logo
-                            const logoDiv = document.createElement('div');
-                            logoDiv.className = 'card-logo builder-logo';
-                            cardContent.appendChild(logoDiv);
                             
                             // Add builder name
                             const name = document.createElement('h3');
@@ -240,21 +154,20 @@
                             // Add location
                             const location = document.createElement('p');
                             location.className = 'card-text';
-                            location.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${builder.Location}`;
+                            location.innerHTML = `<strong>Location:</strong> ${builder.Location}`;
                             cardContent.appendChild(location);
                             
                             // Add category
                             const category = document.createElement('p');
                             category.className = 'card-text';
-                            category.innerHTML = `<i class="fas fa-tag"></i> ${builder.Category}`;
+                            category.innerHTML = `<strong>Category:</strong> ${builder.Category}`;
                             cardContent.appendChild(category);
                             
                             // Add profile link
                             const link = document.createElement('a');
-                            link.href = builder.BioURL || builder['Bio URL'];
+                            link.href = builder.BioURL;
                             link.target = '_blank';
                             link.className = 'card-link';
-                            link.style.color = 'var(--aws-light-blue)';
                             link.innerHTML = 'View Profile <i class="fas fa-external-link-alt"></i>';
                             cardContent.appendChild(link);
                             
@@ -344,7 +257,6 @@
                         
                         currentPage = 1;
                         displayBuilders(currentPage);
-                        updateStats(filteredBuilders);
                     }
                     
                     // Search builders
@@ -361,7 +273,6 @@
                         
                         currentPage = 1;
                         displayBuilders(currentPage);
-                        updateStats(filteredBuilders);
                     }
                     
                     // Add event listeners to filter buttons
@@ -408,93 +319,30 @@
                         filteredBuilders = mlBuilders;
                         currentPage = 1;
                         displayBuilders(currentPage);
-                        updateStats(filteredBuilders);
                     });
-                    
-                    // Update stats
-                    function updateStats(filteredData) {
-                        document.getElementById('total-builders').textContent = filteredData.length;
-                        
-                        // Count unique categories
-                        const categories = new Set();
-                        filteredData.forEach(builder => {
-                            if (builder.Category) {
-                                const categoryName = builder.Category.split(' ').slice(0, -2).join(' ');
-                                categories.add(categoryName);
-                            }
-                        });
-                        document.getElementById('total-categories').textContent = categories.size;
-                        
-                        // Count unique countries
-                        const countries = new Set();
-                        filteredData.forEach(builder => {
-                            if (builder.Location) {
-                                const country = builder.Location.split(',').pop().trim();
-                                if (country) countries.add(country);
-                            }
-                        });
-                        document.getElementById('total-countries').textContent = countries.size;
-                    }
                     
                     // Initial display
                     displayBuilders(currentPage);
-                    updateStats(builders);
                 })
                 .catch(error => {
                     console.error('Error loading Community Builders data:', error);
                     document.getElementById('loading').textContent = 'Error loading Community Builders data. Please try again later.';
                 });
             
-            // Helper function to parse CSV with proper handling of quoted fields
+            // Helper function to parse CSV
             function parseCSV(text) {
                 const lines = text.split('\n');
-                const headers = lines[0].split(',').map(h => h.trim());
+                const headers = lines[0].split(',');
                 
                 return lines.slice(1).map(line => {
                     if (!line.trim()) return null;
                     
-                    // Handle quoted fields with commas
-                    const values = [];
-                    let inQuote = false;
-                    let currentValue = '';
-                    
-                    for (let i = 0; i < line.length; i++) {
-                        const char = line[i];
-                        
-                        if (char === '"' && (i === 0 || line[i-1] !== '\\')) {
-                            inQuote = !inQuote;
-                        } else if (char === ',' && !inQuote) {
-                            values.push(currentValue);
-                            currentValue = '';
-                        } else {
-                            currentValue += char;
-                        }
-                    }
-                    
-                    // Add the last value
-                    values.push(currentValue);
-                    
+                    const values = line.split(',');
                     const builder = {};
-                    headers.forEach((header, i) => {
-                        // Remove quotes and trim
-                        let value = values[i] || '';
-                        if (value.startsWith('"') && value.endsWith('"')) {
-                            value = value.substring(1, value.length - 1);
-                        }
-                        builder[header] = value.trim();
-                    });
                     
-                    // Validate latitude and longitude
-                    if (builder.Latitude && builder.Longitude) {
-                        const lat = parseFloat(builder.Latitude);
-                        const lng = parseFloat(builder.Longitude);
-                        
-                        if (isNaN(lat) || isNaN(lng)) {
-                            console.warn(`Invalid coordinates for ${builder.Name}: ${builder.Latitude}, ${builder.Longitude}`);
-                            builder.Latitude = null;
-                            builder.Longitude = null;
-                        }
-                    }
+                    headers.forEach((header, i) => {
+                        builder[header.trim()] = values[i] ? values[i].trim() : '';
+                    });
                     
                     return builder;
                 }).filter(builder => builder !== null);

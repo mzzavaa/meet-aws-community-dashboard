@@ -1,14 +1,41 @@
-/* Community Dashboard Component Styles */
-
 :root {
+    /* Brand colors */
     --aws-orange: #FF9900;
     --aws-dark-blue: #232F3E;
+    --aws-light-blue: #1A73E8;
+    --aws-purple: #a166ff;
+    
+    /* Light mode variables */
+    --card-bg: white;
+    --card-text: #333333;
+    --card-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    --card-hover-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    
+    /* Map popup variables */
+    --popup-bg: white;
+    --popup-text: #333333;
+}
+
+/* Dark mode variables */
+body.dark-mode {
+    --card-bg: #37424f;
+    --card-text: #ffffff;
+    --card-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    --card-hover-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    
+    /* Map popup variables */
+    --popup-bg: #37424f;
+    --popup-text: #ffffff;
+}
 }
 
 /* Site Header */
 .site-header {
     text-align: center;
     margin-bottom: 2rem;
+    display: flex;
+    justify-content: center;
+    width: 100%;
 }
 
 .site-logo {
@@ -16,31 +43,115 @@
     height: auto;
 }
 
-/* Hero/Member Card Styles */
-.hero-card, .member-card {
+/* Light/dark mode logo handling */
+body:not(.dark-mode) .site-header .site-logo {
+    content: url('../images/meet-the-aws-community_lightbg.png');
+}
+
+body.dark-mode .site-header .site-logo {
+    content: url('../images/meet-the-aws-community.png');
+}
+
+/* Navigation styling */
+nav a.active.heroes-nav {
+    background-color: var(--aws-orange);
+}
+
+nav a.active.builders-nav {
+    background-color: var(--aws-light-blue);
+}
+
+nav a.active.user-groups-nav {
+    background-color: var(--aws-purple);
+}
+
+/* Card Styles */
+.card {
     display: flex;
     flex-direction: column;
-    background-color: white;
+    background-color: var(--card-bg);
     border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    box-shadow: var(--card-shadow);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     overflow: hidden;
     height: 100%;
     position: relative;
-    border-top: 3px solid transparent;
-    background-image: linear-gradient(white, white), linear-gradient(to right, #FF9900, #FFC300);
-    background-origin: border-box;
-    background-clip: content-box, border-box;
+    /* padding: 1.5rem; */
+    text-align: center;
+    color: var(--card-text);
 }
 
-.hero-card:hover, .member-card:hover {
+/* Hero-specific card styling */
+.heroes-page .card {
+    border-top: 3px solid var(--aws-orange);
+}
+
+/* Community Builder-specific card styling */
+.community-builders-page .card {
+    border-top: 3px solid var(--aws-light-blue);
+}
+
+/* Community Builder links */
+.community-builders-page a, a.community-builders-page {
+    color: var(--aws-light-blue);
+    font-weight: 500;
+}
+
+/* User Group-specific card styling */
+.user-groups-page .card {
+    border-top: 3px solid var(--aws-purple);
+}
+
+/* Hero card styling */
+.hero-card, .member-card {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+    height: 100%;
+    position: relative;
+    border-top: 3px solid var(--aws-orange);
+}
+
+.hero-card:hover, .card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    box-shadow: var(--card-hover-shadow);
 }
 
-.card-header {
-    background-color: #232F3E;
+.card-content {
     padding: 15px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.card-title {
+    margin: 0 0 10px 0;
+    color: var(--aws-dark-blue);
+    font-size: 1.2rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* Hero-specific title color - orange in light mode, white in dark mode */
+.heroes-page .card-title, .hero-card .card-title {
+    color: var(--aws-orange);
+}
+
+/* Make hero card titles white in dark mode */
+body.dark-mode .heroes-page .card-title, 
+body.dark-mode .hero-card .card-title {
+    color: white;
+}
+
+/* Hero card header and content */
+.card-header {
+    background-color: var(--aws-dark-blue);
+    padding: 0;
     border-radius: 8px 8px 0 0;
     text-align: center;
     position: relative;
@@ -51,6 +162,78 @@
     overflow: hidden;
 }
 
+.hero-card .card-content {
+    padding: 15px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.hero-card .card-text {
+    margin: 5px 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.hero-card .card-description {
+    margin: 5px 0 10px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    text-align: center;
+    width: 100%;
+    color: var(--card-text);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 4.2em;
+}
+
+.hero-card .card-link {
+    display: inline-block;
+    margin-top: 15px;
+    text-decoration: none;
+    color: var(--aws-orange);
+    cursor: pointer;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.hero-card .card-link:hover {
+    text-decoration: underline;
+}
+
+/* Community Builder-specific title color */
+.community-builders-page .card-title, .community-builder-card .card-title {
+    color: var(--aws-light-blue);
+}
+
+/* User Group-specific title color */
+.user-groups-page .card-title {
+    color: var(--aws-purple);
+}
+
+/* Hero avatar for circular images */
+.hero-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin: 0 auto;
+    border: 3px solid white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.hero-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Hero card image */
 .card-image {
     width: 100px;
     height: 100px;
@@ -62,58 +245,21 @@
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-.card-content {
-    padding: 15px;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.card-title {
-    margin: 0 0 10px 0;
-    color: var(--aws-dark-blue);
-    font-size: 1.2rem;
-    font-weight: 600;
-    text-align: center;
-}
-
-.card-text {
-    margin: 5px 0;
-    font-size: 0.9rem;
-    line-height: 1.4;
-}
-
-.card-description {
-    margin: 10px 0;
-    font-size: 0.9rem;
-    font-style: italic;
-    color: #666;
-    flex-grow: 1;
-    line-height: 1.5;
-}
-
-.card-link {
-    display: inline-block;
-    margin-top: 10px;
-    color: #0073bb;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.card-link:hover {
-    text-decoration: underline;
-}
-
-.card-link i {
-    margin-left: 5px;
-}
-
 /* Interview Status Styles */
 .interview-status {
-    margin-bottom: 10px;
+    margin: 0 0 10px;
     font-size: 0.9rem;
     font-weight: 500;
     padding: 5px 0;
+    text-align: center;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.interview-status i {
+    margin-right: 6px;
 }
 
 .status-done {
@@ -138,7 +284,7 @@
 
 /* Interview Badge - Only for "done" status */
 .interview-badge {
-    margin-bottom: 15px;
+    margin: 10px 0 15px;
     padding: 8px 12px;
     border-radius: 4px;
     font-size: 0.9rem;
@@ -148,6 +294,7 @@
     background-color: #28a745;
     color: white;
     cursor: pointer;
+    transition: background-color 0.3s ease;
 }
 
 .interview-badge a {
@@ -166,70 +313,13 @@
     margin-right: 6px;
 }
 
-/* Video Preview Styles */
-.video-preview {
-    cursor: pointer;
-    padding: 0 !important;
-    margin-top: 1rem;
-    position: relative;
-    width: 100%;
-    padding-bottom: 56.25%; /* 16:9 aspect ratio */
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.card-header .video-preview {
-    margin-top: 0;
-    border-radius: 8px 8px 0 0;
-    height: 100%;
-    width: 100%;
-    position: absolute;
-    top: 0;
-    left: 0;
-}
-
-.video-thumbnail {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-size: cover;
-    background-position: center;
-    cursor: pointer;
-}
-
-.play-button {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 60px;
-    height: 60px;
-    background-color: rgba(255, 153, 0, 0.8);
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-}
-
-.play-button:hover {
-    background-color: rgba(255, 153, 0, 1);
-}
-
-.play-icon {
-    color: white;
-    font-size: 24px;
-    margin-left: 4px; /* Adjust for visual centering */
-}
-
 /* Filter Buttons */
 .filters {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 20px;
+    justify-content: center;
 }
 
 .interview-filters {
@@ -250,23 +340,51 @@
     background-color: #e0e0e0;
 }
 
-.filter-btn.active {
+/* Heroes page - orange theme */
+.heroes-page .filter-btn.active {
     background-color: var(--aws-orange);
     color: white;
 }
 
+/* Community Builders page - blue theme */
+.community-builders-page .filter-btn.active {
+    background-color: var(--aws-light-blue);
+    color: white;
+}
+
+/* User Groups page - purple theme */
+.user-groups-page .filter-btn.active {
+    background-color: var(--aws-purple);
+    color: white;
+}
+
+/* User Groups page - purple hover effect */
+.user-groups-page .filter-btn:hover {
+    background-color: rgba(161, 102, 255, 0.1);
+    border-color: var(--aws-purple);
+    color: var(--aws-purple);
+}
+
+/* User Groups page - purple outline buttons */
+.user-groups-page .filter-btn {
+    background-color: transparent;
+    border: 1px solid #e0e0e0;
+    color: var(--card-text);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+
 /* Interview filter buttons with outline */
-.interview-filters .filter-btn {
+.heroes-page .interview-filters .filter-btn {
     background-color: transparent;
     border: 1px solid var(--aws-orange);
     color: var(--aws-orange);
 }
 
-.interview-filters .filter-btn:hover {
+.heroes-page .interview-filters .filter-btn:hover {
     background-color: rgba(255, 153, 0, 0.1);
 }
 
-.interview-filters .filter-btn.active {
+.heroes-page .interview-filters .filter-btn.active {
     background-color: var(--aws-orange);
     border-color: var(--aws-orange);
     color: white;
@@ -287,9 +405,24 @@
     transition: border-color 0.3s, box-shadow 0.3s;
 }
 
-.search-input:focus {
+/* Heroes page - orange focus */
+.heroes-page .search-input:focus {
     border-color: var(--aws-orange);
     box-shadow: 0 0 0 2px rgba(255, 153, 0, 0.2);
+    outline: none;
+}
+
+/* Community Builders page - blue focus */
+.community-builders-page .search-input:focus {
+    border-color: var(--aws-light-blue);
+    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+    outline: none;
+}
+
+/* User Groups page - purple focus */
+.user-groups-page .search-input:focus {
+    border-color: var(--aws-purple);
+    box-shadow: 0 0 0 2px rgba(161, 102, 255, 0.2);
     outline: none;
 }
 
@@ -328,35 +461,80 @@
     cursor: not-allowed;
 }
 
-.page-btn.active {
+/* Heroes page - orange pagination */
+.heroes-page .page-btn.active {
     background-color: var(--aws-orange);
     color: white;
 }
 
-/* Stats Styles */
-.stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
+/* Community Builders page - blue pagination */
+.community-builders-page .page-btn.active {
+    background-color: var(--aws-light-blue);
+    color: white;
 }
 
+/* User Groups page - purple pagination */
+.user-groups-page .page-btn.active {
+    background-color: var(--aws-purple);
+    color: white;
+}
+
+/* Stat card styling with CSS variables */
 .stat-card {
-    background-color: white;
+    background-color: var(--card-bg);
     border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    box-shadow: var(--card-shadow);
     padding: 1.5rem;
     text-align: center;
     transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    position: relative;
+    min-height: 150px;
+}
+
+/* Heroes page - orange stats */
+.heroes-page .stat-card {
     border-left: 4px solid var(--aws-orange);
+}
+
+/* Community Builders page - blue stats */
+.community-builders-page .stat-card {
+    border-left: 4px solid var(--aws-light-blue);
+}
+
+/* User Groups page - purple stats */
+.user-groups-page .stat-card {
+    border-left: 4px solid var(--aws-purple);
+}
+
+.stat-logo {
+    width: auto;
+    height: 100px;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    margin: 0 auto 10px;
 }
 
 .stat-number {
     font-size: 2rem;
     font-weight: 700;
-    color: var(--aws-orange);
     margin-bottom: 0.5rem;
-    margin-top: 20px;
+    margin-top: 10px;
+}
+
+/* Heroes page - orange numbers */
+.heroes-page .stat-number {
+    color: var(--aws-orange);
+}
+
+/* Community Builders page - blue numbers */
+.community-builders-page .stat-number {
+    color: var(--aws-light-blue);
+}
+
+/* User Groups page - purple numbers */
+.user-groups-page .stat-number {
+    color: var(--aws-purple);
 }
 
 .stat-label {
@@ -381,161 +559,510 @@
     color: #666;
 }
 
-/* Dark Mode Styles */
-body.dark-mode .hero-card, 
-body.dark-mode .member-card {
-    background-color: var(--dark-surface-lighter);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    background-image: none;
+.map-popup {
+    padding: 15px;
+    color: var(--popup-text);
+    background-color: var(--popup-bg);
+    border-radius: 8px;
 }
 
-body.dark-mode .card-header {
-    background-color: var(--dark-surface);
-}
-
-body.dark-mode .card-title {
-    color: var(--dark-text);
-}
-
-body.dark-mode .card-text,
-body.dark-mode .card-description {
-    color: var(--dark-text-secondary);
-}
-
-body.dark-mode .card-link {
-    color: var(--aws-orange);
-}
-
-body.dark-mode .stat-card {
-    background-color: var(--dark-surface-lighter);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-}
-
-body.dark-mode .stat-label {
-    color: var(--dark-text);
-}
-
-body.dark-mode .filter-btn {
-    background-color: var(--dark-surface-lighter);
-    color: var(--dark-text);
-}
-
-body.dark-mode .filter-btn:hover {
-    background-color: var(--dark-surface);
-}
-
-body.dark-mode .filter-btn.active {
-    background-color: var(--aws-orange);
-    color: var(--dark-text);
-}
-
-body.dark-mode .interview-filters .filter-btn {
-    background-color: transparent;
-    border-color: var(--aws-orange);
-    color: var(--aws-orange);
-}
-
-body.dark-mode .interview-filters .filter-btn:hover {
-    background-color: rgba(255, 153, 0, 0.1);
-}
-
-body.dark-mode .interview-filters .filter-btn.active {
-    background-color: var(--aws-orange);
-    color: var(--dark-text);
-}
-
-body.dark-mode .search-input {
-    background-color: var(--dark-surface-lighter);
-    border-color: var(--dark-surface);
-    color: var(--dark-text);
-}
-
-body.dark-mode .page-btn {
-    background-color: var(--dark-surface-lighter);
-    color: var(--dark-text);
-}
-
-body.dark-mode .page-btn:hover:not(:disabled) {
-    background-color: var(--dark-surface);
-}
-
-body.dark-mode .page-btn.active {
-    background-color: var(--aws-orange);
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .grid {
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    }
-    
-    .filters {
-        justify-content: center;
-    }
-    
-    .stats {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .site-logo {
-        max-width: 250px;
-    }
-}
-
-@media (max-width: 576px) {
-    .grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .stats {
-        grid-template-columns: 1fr;
-    }
-    
-    .site-logo {
-        max-width: 200px;
-    }
-}
-
-/* Additional styles for the view-all section */
-.view-all {
+.map-popup-header {
+    padding: 0 0 15px 0;
     text-align: center;
-    margin-top: 2rem;
+    color: var(--popup-text);
+    background-color: var(--popup-bg);
 }
 
-.btn-primary {
-    background-color: var(--aws-orange);
-    color: white;
-    padding: 10px 20px;
-    border-radius: 4px;
+.hero-popup-header {
+    border-bottom: 3px solid var(--aws-orange);
+}
+
+.builder-popup-header {
+    /* Removed border-bottom */
+}
+
+.user-group-popup-header {
+    border-bottom: 3px solid var(--aws-purple);
+}
+
+.map-popup-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--popup-text) !important;
+}
+
+.map-popup-content {
+    padding: 15px 0 0 0;
+    text-align: center;
+    background-color: var(--popup-bg);
+    color: var(--popup-text);
+}
+
+.map-popup-logo {
+    width: 110px;
+    height: 110px;
+    margin: 0 auto 10px;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.map-popup-content p {
+    margin: 5px 0;
+    font-size: 14px;
+    color: var(--popup-text);
+}
+
+.map-popup-content a {
+    display: inline-block;
+    margin-top: 10px;
     text-decoration: none;
     font-weight: 500;
-    transition: background-color 0.3s;
+}
+
+/* User Group Map Popup Styles */
+.user-group-map-popup img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    display: block;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+}
+
+/* Logo styles for light and dark mode */
+.hero-logo {
+    background-image: url('../images/aws-hero-logo_lightbg.png');
+    width: 130px;
+    height: 130px;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    margin: 0 auto 15px;
+}
+
+.builder-logo {
+    background-image: url('../images/aws-community-builder-logo_lightbg.png');
+    width: 130px;
+    height: 130px;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    margin: 0 auto 15px;
+}
+
+.interview-logo {
+    background-image: url('../images/meet-the-aws-community_lightbg.png');
+    width: 130px;
+    height: 130px;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    margin: 0 auto 15px;
+}
+
+/* Dark Mode logo versions */
+body.dark-mode .hero-logo {
+    background-image: url('../images/aws-hero-logo.png');
+}
+
+body.dark-mode .builder-logo {
+    background-image: url('../images/aws-community-builder-logo.png');
+}
+
+body.dark-mode .interview-logo {
+    background-image: url('../images/meet-the-aws-community.png');
+}
+
+.leaflet-popup-content-wrapper {
+    background-color: var(--popup-bg) !important;
+    color: var(--popup-text) !important;
+}
+
+.leaflet-popup-tip {
+    background-color: var(--popup-bg) !important;
+}
+
+/* Fix for leaflet popup content */
+.leaflet-popup-content {
+    color: var(--popup-text) !important;
+}
+
+.leaflet-popup-content h3 {
+    color: var(--popup-text) !important;
+}
+
+.leaflet-popup-content p {
+    color: var(--popup-text) !important;
+}
+
+/* Hero popup links */
+.leaflet-popup-content a {
+    color: var(--popup-text);
+}
+
+body:not(.dark-mode) .hero-popup-content a {
+    color: var(--aws-orange);
+}
+
+body.dark-mode .hero-popup-content a {
+    color: var(--aws-orange);
+}
+
+/* Builder popup links */
+body:not(.dark-mode) .builder-popup-content a {
+    color: var(--aws-light-blue);
+}
+
+body.dark-mode .builder-popup-content a {
+    color: var(--aws-light-blue);
+}
+
+/* User Group popup links */
+body:not(.dark-mode) .user-group-popup-content a {
+    color: var(--aws-purple);
+}
+
+body.dark-mode .user-group-popup-content a {
+    color: var(--aws-purple);
+}
+
+/* Stats Styles */
+.stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin: 2rem 0;
+}
+
+/* Link colors for different sections */
+.heroes-page a, a.heroes-page {
+    color: var(--aws-orange);
+    font-weight: 500;
+}
+
+.community-builders-page a, a.community-builders-page {
+    color: var(--aws-light-blue);
+    font-weight: 500;
+}
+
+.user-groups-page a, a.user-groups-page {
+    color: var(--aws-purple);
+    font-weight: 500;
+}
+
+/* Custom styles for leaflet popups */
+.custom-popup .leaflet-popup-content-wrapper {
+    border-radius: 8px;
+    padding: 0;
+    overflow: hidden;
+    background-color: var(--popup-bg) !important;
+}
+
+.custom-popup .leaflet-popup-content {
+    margin: 0 !important;
+    width: 250px !important;
+    background-color: var(--popup-bg) !important;
+}
+
+.custom-popup .leaflet-popup-tip {
+    background-color: var(--popup-bg) !important;
+}
+
+.builder-popup .leaflet-popup-content-wrapper,
+.builder-popup .leaflet-popup-content,
+.builder-popup .leaflet-popup-tip {
+    background-color: var(--popup-bg) !important;
+}
+
+.builder-popup .leaflet-popup-content h3,
+.builder-popup .leaflet-popup-content p {
+    color: var(--popup-text) !important;
+}
+
+.hero-card .card-description {
+    margin: 5px 0 10px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    text-align: center;
+    width: 100%;
+    color: var(--card-text);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Video Preview Styles */
+.video-preview {
+    cursor: pointer;
+    padding: 0 !important;
+    margin-top: 1rem;
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.card-header .video-preview {
+    margin-top: 0;
+    border-radius: 8px 8px 0 0;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.video-thumbnail {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
     cursor: pointer;
 }
 
-.btn-primary:hover {
-    background-color: #ec7211;
+
+.play-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    background-color: rgba(255, 153, 0, 0.8);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
 }
 
-.featured-section, .interviews-section, .stats-section {
-    margin-bottom: 3rem;
+.play-button:hover {
+    background-color: rgba(255, 153, 0, 1);
 }
 
-/* Card styles */
-.card {
-    background-color: white;
+.play-icon {
+    color: white;
+    font-size: 24px;
+    margin-left: 4px; /* Adjust for visual centering */
+}
+.interview-link {
+    margin: 10px 0;
+    text-align: center;
+}
+
+.interview-link a {
+    display: inline-block;
+    padding: 6px 12px;
+    background-color: var(--aws-orange);
+    color: white;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: background-color 0.3s ease;
+}
+
+.interview-link a:hover {
+    background-color: #e88a00;
+}
+
+.interview-link i {
+    margin-right: 5px;
+}
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+.card-logo {
+    width: 130px;
+    height: 130px;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    margin: 0 auto 15px;
+}
+.user-group-logo {
+    background-image: url('../images/aws-user-group-logo_lightbg.png');
+    width: 130px;
+    height: 130px;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    margin: 0 auto 15px;
+}
+
+body.dark-mode .user-group-logo {
+    background-image: url('../images/aws-user-group-logo.png');
+}
+.community-builder-card {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--card-bg);
     border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    padding: 1.5rem;
+    box-shadow: var(--card-shadow);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
     height: 100%;
+    position: relative;
+    border-top: 3px solid var(--aws-light-blue);
+    color: var(--card-text);
+    margin-bottom: 20px;
 }
 
-.card:hover {
+.community-builder-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    box-shadow: var(--card-hover-shadow);
 }
 
-body.dark-mode .card {
-    background-color: var(--dark-surface-lighter);
+.community-builder-card .card-header {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1.5rem 1.5rem 0;
+    flex-direction: column;
+}
+
+.community-builder-card .card-content {
+    padding: 1.5rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.community-builder-card .card-text {
+    margin: 5px 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    text-align: center;
+    width: 100%;
+    color: var(--card-text);
+}
+
+.community-builder-card .card-link {
+    display: inline-block;
+    margin-top: 15px;
+    text-decoration: none;
+    color: var(--aws-light-blue);
+    cursor: pointer;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.community-builder-card .card-link:hover {
+    text-decoration: underline;
+}
+
+.builder-avatar {
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin: 0 auto 15px;
+    border: 2px solid var(--aws-light-blue);
+}
+
+.builder-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+/* User Group Card Styling - Updated to match hero cards */
+.user-group-card {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: var(--card-shadow);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+    height: 100%;
+    position: relative;
+    border-top: 3px solid var(--aws-purple);
+}
+
+.user-group-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--card-hover-shadow);
+}
+
+.user-group-card .card-header {
+    background-color: var(--aws-dark-blue);
+    padding: 0;
+    border-radius: 8px 8px 0 0;
+    text-align: center;
+    position: relative;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.user-group-card .card-content {
+    padding: 15px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.user-group-card .card-title {
+    margin: 0 0 10px 0;
+    color: var(--aws-purple);
+    font-size: 1.2rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.user-group-card .card-text {
+    margin: 5px 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.user-group-card .card-link {
+    display: inline-block;
+    margin-top: 15px;
+    text-decoration: none;
+    color: var(--aws-purple);
+    cursor: pointer;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.user-group-card .card-link:hover {
+    text-decoration: underline;
+}
+/* Additional styles for builder popups */
+.builder-popup .leaflet-popup-content-wrapper {
+    background-color: #37424f !important;
+}
+
+.builder-popup .leaflet-popup-tip {
+    background-color: #37424f !important;
+}
+
+.builder-popup .map-popup,
+.builder-popup .map-popup-header,
+.builder-popup .map-popup-content {
+    background-color: #37424f !important;
+}
+
+.builder-popup h3,
+.builder-popup p {
+    color: #ffffff !important;
 }
