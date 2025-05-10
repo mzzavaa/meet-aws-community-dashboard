@@ -120,9 +120,9 @@
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Define CSV URLs - use the full data files
-        const userGroupsCSVUrl = '{{ "data/aws_user_groups_with_members.csv" | absURL }}';
-        const buildersCSVUrl = '{{ "data/community_builders_complete.csv" | absURL }}';
-        const heroesCSVUrl = '{{ "data/combined_members_with_heroes.csv" | absURL }}';
+        const userGroupsCSVUrl = '{{ "data/aws_user_groups.csv" | relURL }}';
+        const buildersCSVUrl = '{{ "data/aws_community_builders.csv" | relURL }}';
+        const heroesCSVUrl = '{{ "data/aws_heroes.csv" | relURL }}';
         
         // Global variables for map and clusters
         let map, userGroupsCluster, buildersCluster, heroesCluster;
