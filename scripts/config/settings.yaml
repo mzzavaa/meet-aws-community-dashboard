@@ -1,0 +1,96 @@
+# AWS Community Dashboard Scraper Configuration
+
+# General Settings
+general:
+  output_dir: "../data"
+  static_output_dir: "../static/data"
+  backup_dir: "../data/backups"
+  log_level: "INFO"
+  max_retries: 3
+  request_delay: 1  # seconds between requests
+
+# Data Sources Configuration
+data_sources:
+  aws_heroes:
+    enabled: true
+    url: "https://aws.amazon.com/developer/community/heroes/"
+    output_file: "aws_heroes.csv"
+    complete_output_file: "aws_heroes_final_clean.csv"
+    update_frequency: "daily"  # daily, weekly, monthly
+    
+  community_builders:
+    enabled: true
+    search_endpoint: "https://aws.amazon.com/api/dirs/items/search"
+    output_file: "aws_community_builders.csv"
+    complete_output_file: "community_builders_complete.csv"
+    update_frequency: "daily"
+    search_params:
+      item_type: "community-builder"
+      sort_by: "item.additionalFields.sortableTitle"
+      sort_order: "asc"
+      size: 2000
+      
+  user_groups:
+    enabled: true
+    meetup_api_key: ""  # Set via environment variable MEETUP_API_KEY
+    output_file: "aws_user_groups.csv"
+    complete_output_file: "aws_user_groups_with_members.csv"
+    update_frequency: "weekly"
+    search_terms: ["AWS", "Amazon Web Services", "Cloud Computing"]
+
+# Geocoding Configuration
+geocoding:
+  enabled: true
+  service: "nominatim"  # nominatim, google, mapbox
+  api_key: ""  # For paid services
+  cache_results: true
+  cache_file: "geocoding_cache.json"
+  rate_limit: 1  # requests per second
+
+# Data Validation
+validation:
+  required_fields:
+    heroes: ["Name", "Location", "Category", "Bio URL"]
+    builders: ["Name", "Location", "Category"]
+    user_groups: ["Name", "Location", "URL", "Category"]
+  
+  min_records:
+    heroes: 100
+    builders: 500
+    user_groups: 200
+
+# Git Integration
+git:
+  enabled: true
+  auto_commit: true
+  commit_message: "Automated data update - {timestamp}"
+  branch: "main"  # or "data-updates" for separate branch
+
+# Notifications
+notifications:
+  enabled: false
+  email:
+    smtp_server: ""
+    smtp_port: 587
+    username: ""
+    password: ""
+    recipients: []
+  
+  slack:
+    webhook_url: ""
+    channel: "#aws-community"
+
+# Scheduling
+schedule:
+  enabled: false  # Set to true for background scheduling
+  heroes_time: "06:00"  # 24-hour format
+  builders_time: "07:00"
+  user_groups_time: "08:00"
+  timezone: "UTC"
+
+# Error Handling
+error_handling:
+  continue_on_error: true
+  max_consecutive_failures: 5
+  fallback_to_cached_data: true
+  send_error_notifications: true

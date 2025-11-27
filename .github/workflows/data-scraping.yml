@@ -1,0 +1,207 @@
+name: Automated Data Scraping
+
+on:
+  schedule:
+    # Run daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      data_source:
+        description: 'Data source to scrape'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - heroes
+          - builders
+          - user_groups
+      force_update:
+        description: 'Force update even if no changes'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  scrape-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Cache Python dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('scripts/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        cd scripts
+        pip install -r requirements.txt
+    
+    - name: Configure Git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+    
+    - name: Create logs directory
+      run: |
+        mkdir -p scripts/logs
+    
+    - name: Run data scraping
+      env:
+        MEETUP_API_KEY: ${{ secrets.MEETUP_API_KEY }}
+      run: |
+        cd scripts
+        python main.py --source ${{ github.event.inputs.data_source || 'all' }}
+    
+    - name: Check for changes
+      id: verify-changed-files
+      run: |
+        if [ -n "$(git status --porcelain)" ]; then
+          echo "changed=true" >> $GITHUB_OUTPUT
+        else
+          echo "changed=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Commit and push changes
+      if: steps.verify-changed-files.outputs.changed == 'true' || github.event.inputs.force_update == 'true'
+      run: |
+        git add data/ static/data/
+        git commit -m "Automated data update - $(date -u '+%Y-%m-%d %H:%M:%S UTC')" || exit 0
+        git push
+    
+    - name: Upload logs as artifacts
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: scraping-logs
+        path: scripts/logs/
+        retention-days: 30
+    
+    - name: Notify on failure
+      if: failure()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: 'Data Scraping Failed',
+            body: `The automated data scraping workflow failed on ${new Date().toISOString()}.\n\nPlease check the logs for more details.`,
+            labels: ['bug', 'automation']
+          })
+
+  validate-data:
+    needs: scrape-data
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        pip install pandas pyyaml
+    
+    - name: Validate data files
+      run: |
+        python -c "
+        import pandas as pd
+        import sys
+        
+        files_to_check = [
+            'static/data/aws_heroes.csv',
+            'static/data/aws_community_builders.csv', 
+            'static/data/aws_user_groups.csv'
+        ]
+        
+        all_valid = True
+        
+        for file_path in files_to_check:
+            try:
+                df = pd.read_csv(file_path)
+                print(f'✓ {file_path}: {len(df)} records')
+                
+                # Basic validation
+                if len(df) == 0:
+                    print(f'✗ {file_path}: No data found')
+                    all_valid = False
+                elif 'Name' not in df.columns:
+                    print(f'✗ {file_path}: Missing Name column')
+                    all_valid = False
+                elif df['Name'].isna().sum() > len(df) * 0.1:
+                    print(f'✗ {file_path}: Too many missing names')
+                    all_valid = False
+                    
+            except Exception as e:
+                print(f'✗ {file_path}: Error reading file - {e}')
+                all_valid = False
+        
+        if not all_valid:
+            sys.exit(1)
+        else:
+            print('All data files are valid!')
+        "
+    
+    - name: Generate data summary
+      run: |
+        python -c "
+        import pandas as pd
+        from datetime import datetime
+        
+        print('# Data Summary Report')
+        print(f'Generated: {datetime.now().strftime(\"%Y-%m-%d %H:%M:%S UTC\")}')
+        print()
+        
+        files = {
+            'AWS Heroes': 'static/data/aws_heroes.csv',
+            'Community Builders': 'static/data/aws_community_builders.csv',
+            'User Groups': 'static/data/aws_user_groups.csv'
+        }
+        
+        for name, file_path in files.items():
+            try:
+                df = pd.read_csv(file_path)
+                print(f'## {name}')
+                print(f'- Total records: {len(df)}')
+                
+                if 'Location' in df.columns:
+                    unique_locations = df['Location'].nunique()
+                    print(f'- Unique locations: {unique_locations}')
+                
+                if 'Category' in df.columns:
+                    categories = df['Category'].value_counts().head(5)
+                    print(f'- Top categories: {dict(categories)}')
+                
+                print()
+                
+            except Exception as e:
+                print(f'## {name}')
+                print(f'- Error: {e}')
+                print()
+        " > data_summary.md
+    
+    - name: Upload data summary
+      uses: actions/upload-artifact@v3
+      with:
+        name: data-summary
+        path: data_summary.md
